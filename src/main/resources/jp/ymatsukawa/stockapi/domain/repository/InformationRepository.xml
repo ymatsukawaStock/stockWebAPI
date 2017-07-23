@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.ymatsukawa.stockapi.domain.repository.InformationRepository">
+    <select id="findAll" resultType="jp.ymatsukawa.stockapi.domain.entity.db.Information">
+        SELECT
+          DISTINCT INFO.informationid, INFO.subject, INFO.created, INFO.updated
+        FROM
+          information INFO
+        INNER JOIN
+          informationtags AS INFOTAG
+        ON
+          INFO.informationid = INFOTAG.informationid
+        INNER JOIN
+          TAG AS T
+        ON
+          INFOTAG.tagid = T.tagid
+        <if test="tag != null">
+        WHERE
+          <foreach item="tagName" index="index" collection="tag">
+            T.name = #{tagName}
+          </foreach>
+          <if test="(index + 1) != tag.size()"> <!-- APPEND "AND" until reach final index -->
+            AND
+          </if>
+        </if>
+        ORDER BY
+        <choose>
+            <when test="sort == 'created'">
+                created
+            </when>
+            <when test="sort == 'updated'">
+                updated
+            </when>
+            <otherwise>
+                <!-- if not passed upon params, assign "created" -->
+                created
+            </otherwise>
+        </choose>
+        <choose>
+            <when test="sortBy == 'asc'">
+                ASC
+            </when>
+            <when test="sortBy == 'desc'">
+                DESC
+            </when>
+        </choose>
+        LIMIT #{limit}
+    </select>
+
+    <insert id="save" timeout="20" parameterType="Information" useGeneratedKeys="true" keyProperty="information.informationId" keyColumn="informationid">
+        INSERT INTO
+          information
+          (subject, detail, created, updated)
+        VALUES
+          (#{subject}, #{detail}, NOW(), NOW())
+    </insert>
+</mapper>

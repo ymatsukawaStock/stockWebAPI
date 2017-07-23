@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.ymatsukawa.stockapi.domain.repository.InformationTagsRepository">
+    <select id="findTagNameByInfomationIds" resultType="jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformationTags">
+        SELECT
+          INFOTAG.informationid, TAG.name
+        FROM
+          tag AS TAG
+        INNER JOIN
+          informationTags AS INFOTAG
+        ON TAG.tagid = INFOTAG.tagid
+        <if test="informationIds.size() > 0">
+            WHERE
+            <foreach item="informationid" index="index" collection="informationIds">
+                INFOTAG.informationid = #{informationid}
+            <if test="(index + 1) != informationIds.size()"> <!-- APPEND "AND" until reach final index -->
+                AND
+            </if>
+            </foreach>
+        </if>
+    </select>
+    <insert id="saveRelationByInfoIdAndTagNames">
+        INSERT INTO
+          informationtags
+          (informationid, tagid)
+        VALUES
+        <foreach item="name" index="index" collection="names">
+          (#{informationid}, (SELECT tagid FROM tag WHERE name = #{name}))
+            <if test="(index + 1) != names.size()"> <!-- APPEND "," until reach final index -->
+              ,
+            </if>
+        </foreach>
+    </insert>
+</mapper>
