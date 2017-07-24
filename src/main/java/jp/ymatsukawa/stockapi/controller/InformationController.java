@@ -43,7 +43,7 @@ public class InformationController {
   )
   public Map<String, Object> getInformationSubject(
     HttpServletRequest request,
-    @RequestParam("limit") long limit,
+    @RequestParam(value = "limit") long limit,
     @RequestParam(value = "tag", required = false, defaultValue = "") String tag,
     @RequestParam(value = "sort", required = false, defaultValue = "created") String sort,
     @RequestParam(value = "sortBy", required = false, defaultValue = "desc") String sortBy
@@ -83,6 +83,7 @@ public class InformationController {
     @Valid @RequestBody InformationCreation creation,
     BindingResult bindingResult
   ) {
+    // TODO: limit should be set when tag is not set.
     Set errors = RequestValidator.getErrors(bindingResult);
     if(!errors.isEmpty()) {
       logger.info("Client IP:{} sent bad request, with body=", request.getRemoteAddr());
@@ -93,7 +94,7 @@ public class InformationController {
         this.informationService.create(creation.getInformation(), creation.getTag())
       );
     } catch (Exception e) {
-      logger.warn("When client:{} requestd, information domain happened error: {}", request.getRemoteAddr(),e.getMessage());
+      logger.warn("When client:{} requested, information domain happened error: {}", request.getRemoteAddr(),e.getMessage());
       return ResponseFormatter.makeResponse(Response.SERVER_INTERNAL_ERROR);
     }
   }
