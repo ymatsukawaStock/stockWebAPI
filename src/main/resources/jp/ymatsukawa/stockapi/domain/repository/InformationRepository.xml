@@ -5,25 +5,17 @@
 <mapper namespace="jp.ymatsukawa.stockapi.domain.repository.InformationRepository">
     <select id="findAll" resultType="jp.ymatsukawa.stockapi.domain.entity.db.Information">
         SELECT
-          DISTINCT INFO.informationid, INFO.subject, INFO.created, INFO.updated
+          DISTINCT informationid, subject, created, updated
         FROM
-          information INFO
-        INNER JOIN
-          informationtags AS INFOTAG
-        ON
-          INFO.informationid = INFOTAG.informationid
-        INNER JOIN
-          TAG AS T
-        ON
-          INFOTAG.tagid = T.tagid
-        <if test="tag != null">
+          viewinformationtags
+        <if test="informationIds.size() > 0">
         WHERE
-          <foreach item="tagName" index="index" collection="tag">
-            T.name = #{tagName}
+          <foreach item="informationId" index="index" collection="informationIds">
+            informationid = #{informationId}
+            <if test="(index + 1) != informationIds.size()"> <!-- APPEND "AND" until reach final index -->
+              OR
+            </if>
           </foreach>
-          <if test="(index + 1) != tag.size()"> <!-- APPEND "AND" until reach final index -->
-            AND
-          </if>
         </if>
         ORDER BY
         <choose>

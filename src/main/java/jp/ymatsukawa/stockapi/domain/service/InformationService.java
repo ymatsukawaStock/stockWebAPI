@@ -1,14 +1,13 @@
 package jp.ymatsukawa.stockapi.domain.service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformation;
-import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformationTags;
 import jp.ymatsukawa.stockapi.domain.entity.db.Information;
 import jp.ymatsukawa.stockapi.domain.entity.db.Tag;
 import jp.ymatsukawa.stockapi.domain.repository.InformationTagsRepository;
 import jp.ymatsukawa.stockapi.domain.repository.TagRepository;
+import jp.ymatsukawa.stockapi.domain.service.relation.InformationTagsResource;
 import jp.ymatsukawa.stockapi.tool.converter.ListConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -42,50 +41,66 @@ public class InformationService {
   public List<BridgeInformation> getAll(
     long limit, String tags, String sort, String sortBy
   ) throws Exception {
-    // TODO: put footprint > if requested and no changed, return cached one.
-
-    Set<String> tag = null;
+    // TODO: set rate limit ... need KVS ... Redis
+    /**
+     * Get map of "informationId to its related tags".
+     * parameter's tags should be subset of informationId's tags
+     *
+     * ex. of matches
+     * tags: "foo,bar"
+     * matches     ... [informationId: 1, tag: "foo", tag: "bar", tag: "qux"]
+     * not matches ... [informationId: 2, tag: "foo", tag: "char"]
+     * not matches ... [informationId: 3, tag: "foo"]
+     *
+     * ex. of map
+     * parameter of tag is "foo,bar"
+     * {
+     *   informationId: 1 -> name: "foo",
+     *   informationId: 1 -> name: "bar",
+     *   informationId: 1 -> name: "qux",
+     *   informationId: 2 -> name: "foo",
+     *   informationId: 2 -> name: "bar",
+     *   ...
+     * }
+     */
+    Set<String> tagSet = new HashSet<>();
     if(!tags.isEmpty()) {
-      tag = new HashSet<>(ListConverter.getListBySplit(tags, ","));
+      tagSet = new HashSet<>(ListConverter.getListBySplit(tags, ","));
+    }
+    Map<Long, List<String>> informationIdToTags = InformationTagsResource.getInstance().getInformationidToTags(
+      informationTagsRepository, tagSet
+    );
+
+    /**
+     * return empty list if record is not found.
+     */
+    if(informationIdToTags.isEmpty()) {
+      return new ArrayList<BridgeInformation>() {};
     }
 
-    // get all information data by parameter
-    List<Information> information = informationRepository.findAll(limit, tag, sort, sortBy);
+    /**
+     * get limited information data constrained by
+     * "limit":  list size
+     * "sort":   sort object; what to sort
+     * "sortBy": sort way; how to sort
+     * "informationIds": informationIds which have all parameter's tags
+     */
+    List<Information> information = informationRepository.findAll(limit, sort, sortBy, informationIdToTags.keySet());
 
-    // return empty Information if record is not found and do not step out,
-    // because below steps need information entity
+    /**
+     * return empty list if record is not found.
+     */
     if(information.isEmpty()) {
       return new ArrayList<BridgeInformation>() {};
     }
 
-    // map informationid and tagname and store them by informationtag bean
-    // in order to collect data "what informationid has tagnames"
-    // { informationid1 -> tagname, informationid1 -> tagname, informationid2 -> tagname ... }
-    List<Long> infoIds = information.stream().map(info -> info.getInformationId()).collect(Collectors.toList());
-    List<BridgeInformationTags> informationTags = informationTagsRepository.findTagNameByInfomationIds(infoIds);
-
-    // order List<BridgeInformationTags> to map; informationid to listed tagname; { informationid1 -> List<String>:tagname ... }
-    // to prepare making "information's taglist"
-    Map<Long, List<String>> tagsInfoHas = new HashMap<>();
-    informationTags.forEach(informationTag -> {
-      Long id = informationTag.getInformationId();
-      String newTag = informationTag.getTag();
-
-      if(tagsInfoHas.get(id) == null) {
-        tagsInfoHas.put(id, new ArrayList<String>() { { add(newTag); } });
-      } else {
-        List<String> newTags = tagsInfoHas.get(id);
-        newTags.add(newTag);
-        tagsInfoHas.put(id, newTags);
-      }
-    });
-
-    // make entity list of Infomation that has tag list
-    // List<BridgeInformation(subject:String, detail:String, tag:List<String>)>
+    /**
+     * create entity Information list which has tag list.
+     */
     List<BridgeInformation> entities = new ArrayList<>();
     information.forEach(info -> {
-      List<String> tagsOfInfo = tagsInfoHas.get(info.getInformationId());
-      entities.add(new BridgeInformation(info, tagsOfInfo));
+      List<String> tagsOfInformation = informationIdToTags.get(info.getInformationId());
+      entities.add(new BridgeInformation(info, tagsOfInformation));
     });
 
     return entities;
@@ -95,31 +110,44 @@ public class InformationService {
    * Registers information with tag.<br />
    * if tag(s) is not registered, save it as new.
    * @param information - Information entity. Required properties are "subject" and "detail".
-   * @param tag - Tag entity. Required propery is "name".
+   * @param tag - Tag entity. Required property is "name".
    * @throws Exception - when error occurs at process of RDBMS.
    */
   @Transactional
   public BridgeInformation create(Information information, Tag tag) throws Exception {
-    // save information
+    /**
+     * save information with "subject" and "detail"
+     */
     informationRepository.save(information, information.getSubject(), information.getDetail());
 
-    // get tagname which is not saved.
-    // if found, store it.
+    // TODO: avoid multiple split
+    /**
+     * when parameter's tag exist,
+     * 1. save tag name which is not yet saved at DB.
+     * 2. chains relation between informationId and tagId
+     * ex. of 1.
+     * DB
+     * tag: name ... "foo", "qux", "sample", "example"
+     * when parameter tags "foo,bar"
+     * then
+     * tag: name ... "foo", "qux", "sample", "example", "bar"
+     */
     if(!tag.getName().isEmpty()) {
-      Set<String> newAddedTagNames = new HashSet<>(ListConverter.getListBySplit(tag.getName(), ","));
-      newAddedTagNames.removeAll(tagRepository.findSavedName(newAddedTagNames));
-      if(!newAddedTagNames.isEmpty()) {
-        tagRepository.save(newAddedTagNames);
+      // 1. save tag name which is not yet saved at DB.
+      Set<String> newAddedTags = new HashSet<>(ListConverter.getListBySplit(tag.getName(), ","));
+      newAddedTags.removeAll(tagRepository.findSavedName(newAddedTags));
+      if(!newAddedTags.isEmpty()) {
+        tagRepository.save(newAddedTags);
       }
+
+      // 2. chains relation between informationId and tagId
+      Set<String> tagsRelatedToInformationId = new HashSet<>(ListConverter.getListBySplit(tag.getName(), ","));
+      informationTagsRepository.saveRelationByInfoIdAndTagNames(
+          information.getInformationId(),
+          tagsRelatedToInformationId
+      );
     }
 
-    // chains relation between informationid and tagids
-    if(!tag.getName().isEmpty()) {
-      Set<String> tags = new HashSet<>(ListConverter.getListBySplit(tag.getName(), ","));
-      informationTagsRepository.saveRelationByInfoIdAndTagNames(information.getInformationId(), tags);
-    }
-
-    // return bridge entity
     return (new BridgeInformation(information, ListConverter.getListBySplit(tag.getName(), ",")));
   }
 }

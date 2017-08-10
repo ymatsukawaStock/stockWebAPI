@@ -16,9 +16,9 @@ public interface InformationRepository {
    */
   List<Information> findAll(
     @Param("limit") long limit,
-    @Param("tag") Set<String> tags,
     @Param("sort") String sort,
-    @Param("sortBy") String sortBy
+    @Param("sortBy") String sortBy,
+    @Param("informationIds") Set<Long> informationIds
   );
 
   /**

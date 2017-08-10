@@ -5,20 +5,33 @@
 <mapper namespace="jp.ymatsukawa.stockapi.domain.repository.InformationTagsRepository">
     <select id="findTagNameByInfomationIds" resultType="jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformationTags">
         SELECT
-          INFOTAG.informationid, TAG.name
+          informationid,
+          name
         FROM
-          tag AS TAG
-        INNER JOIN
-          informationTags AS INFOTAG
-        ON TAG.tagid = INFOTAG.tagid
-        <if test="informationIds.size() > 0">
+          viewinformationtags
+        <if test="tags.size() > 0">
+        WHERE
+          informationid IN (
+            SELECT
+              INFOTAG.informationid
+            FROM
+              tag AS TAG
+            INNER JOIN
+              informationtags AS INFOTAG
+            ON
+              TAG.tagid = INFOTAG.tagid
             WHERE
-            <foreach item="informationid" index="index" collection="informationIds">
-                INFOTAG.informationid = #{informationid}
-            <if test="(index + 1) != informationIds.size()"> <!-- APPEND "AND" until reach final index -->
-                AND
-            </if>
+            <foreach item="tag" index="index" collection="tags">
+              TAG.name = #{tag}
+              <if test="(index + 1) != tags.size()"> <!-- APPEND "OR" until reach final index -->
+                OR
+              </if>
             </foreach>
+            GROUP BY
+              INFOTAG.informationid
+            HAVING
+              COUNT(*) = #{tagNumbers}
+          )
         </if>
     </select>
     <insert id="saveRelationByInfoIdAndTagNames">

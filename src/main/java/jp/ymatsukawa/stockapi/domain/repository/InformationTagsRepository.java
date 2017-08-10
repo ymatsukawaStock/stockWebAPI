@@ -15,7 +15,8 @@ public interface InformationTagsRepository {
    * @return List of DBInformationTags; informationId and tagname
    */
   List<BridgeInformationTags> findTagNameByInfomationIds(
-    @Param("informationIds") List<Long> informationIds
+    @Param("tags") Set<String> tags,
+    @Param("tagNumbers") int tagNumbers
   );
 
   void saveRelationByInfoIdAndTagNames(
