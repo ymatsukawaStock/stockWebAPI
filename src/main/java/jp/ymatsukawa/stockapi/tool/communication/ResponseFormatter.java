@@ -1,51 +1,120 @@
 package jp.ymatsukawa.stockapi.tool.communication;
 
-import jp.ymatsukawa.stockapi.tool.constant.Response;
+import org.springframework.http.HttpStatus;
 
+import javax.servlet.http.HttpServletResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-// FIXME: any challenging utilize
 public class ResponseFormatter {
-  public static<T> Map<String, Object> makeResponse(T domain) {
-    Map response = new HashMap<String, Object>();
-    if(domain == null) {
-      response.put("statusCode", Response.CLIENT_ERROR_NOT_FOUND.getCode());
+  /**
+   * make return able "string to single data" object to client. <br />
+   * when entity is null or empty, response becomes 400 and body is null.<br />
+   * when entity is not empty, response is 200 and body is formatted like <br />
+   * entity; 1st arg should override toString() as JSON's root key name<br />
+   *
+   * ex. <br />
+   * Status: 200 OK<br />
+   * {<br />
+   * &nbsp;&nbsp; "entityRootKeyName": { <br/>
+   * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "key1": "value", <br />
+   * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "key2": "value" <br />
+   * &nbsp;&nbsp;&nbsp;&nbsp;}<br />
+   * }<br />
+   * <br />
+   * Status: 404 Not Found<br />
+   * -- body is blank
+   * @param entity DB entity
+   * @param httpResponse httpServletResponse
+   * @param <T> EntityBean class
+   * @return Map&lt;String, Object&gt; - return able string to single object
+   */
+  public static<T> Map<String, Object>makeResponse(T entity, HttpServletResponse httpResponse) {
+    Map<String, Object> result = null;
+    if(entity == null) {
+      httpResponse.setStatus(HttpStatus.NOT_FOUND.value());
     } else {
-      response.put("statusCode", Response.SUCCESS_OK.getCode());
-      response.put(domain.toString(), domain);
+      httpResponse.setStatus(HttpStatus.OK.value());
+      result = new HashMap<>();
+      result.put(entity.toString(), entity);
     }
 
-    return response;
+    return result;
   }
 
-  // TODO: use general class T for put simplename
-  // FIXME: IS get(0) needed? any alternative?
-  public static<T> Map<String, Object> makeResponse(List<T> domainList) {
-    Map response = new HashMap<String, Object>();
-    if((domainList == null) || domainList.isEmpty()) {
-      response.put("statusCode", Response.CLIENT_ERROR_NOT_FOUND.getCode());
+  /**
+   * make return able "string to list data" object to client. <br />
+   * when entity is null or empty, response becomes 400 and body is null.
+   * when entity is not empty, response is 200 and body is formatted like <br />
+   * each entity of entityList; 1st arg should override toString() as JSON's root key name<br />
+   * <br />
+   * ex. <br />
+   * Status: 200 OK<br />
+   * {<br />
+   * &nbsp;&nbsp; "entityName":{<br/>
+   * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<br />
+   * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {"key1": "value"}, <br />
+   * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {"key1": "value"} <br />
+   * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ]<br />
+   * &nbsp;&nbsp;&nbsp;&nbsp;}<br />
+   * }<br />
+   * <br />
+   * Status: 404 Not Found<br />
+   * -- body is blank
+   * @param entityList list which same DB entity is added
+   * @param httpResponse httpServletResponse
+   * @param <T> EntityBean class
+   * @return Map&lt;String, Object&gt; - return able string to list object
+   */
+  public static<T> Map<String, Object> makeResponse(List<T> entityList, HttpServletResponse httpResponse) {
+    Map<String, Object> result = null;
+    if((entityList == null) || entityList.isEmpty()) {
+      httpResponse.setStatus(HttpStatus.NOT_FOUND.value());
     } else {
-      response.put("statusCode", Response.SUCCESS_OK.getCode());
-      response.put(domainList.get(0).toString(), domainList);
+      httpResponse.setStatus(HttpStatus.OK.value());
+      result = new HashMap<>();
+      result.put(entityList.get(0).toString(), entityList);
     }
-
-    return response;
+    return result;
   }
 
-  public static Map<String, Object> makeResponse(Response response) {
-    Map res = new HashMap<String, Object>();
-    res.put("statusCode", response.getCode());
-    res.put("message", response.getMessage());
-    return res;
+  /**
+   * make return able "message to 'http response reason'" object.<br />
+   * 'http response reason' is decided by status code.<br />
+   * @param httpStatus HTTP Status, HttpStatus.OK, HttpStatus.INTERNAL_SERVER_ERROR and etc.
+   * @param httpResponse HttpServletResponse
+   * @return Map&lt;String, Object&gt; - "message to 'http response reason'"
+   */
+  public static Map<String, Object> makeResponse(HttpStatus httpStatus, HttpServletResponse httpResponse) {
+    httpResponse.setStatus(httpStatus.value());
+    return (new HashMap<String, Object>() {
+      { put("message", httpStatus.getReasonPhrase()); }
+    });
   }
 
-  public static Map<String, Object> makeErrorResponse(Response response, Set dataSet) {
-    Map res = new HashMap<String, Object>();
-    res.put("statusCode", response.getCode());
-    res.put("message", dataSet);
-    return res;
+  /**
+   * make return able "message to 'array of error messages'" object.<br />
+   * response status code is 404 fixed.<br />
+   * <br />
+   * Status: 404 Bad Request<br />
+   * {<br />
+   * &nbsp;&nbsp; "message":[<br/>
+   * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"abc is blank", <br />
+   * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"def is blank", <br />
+   * &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"ghi is permitted only number"<br />
+   * &nbsp;&nbsp;&nbsp;&nbsp;]<br />
+   * }<br />
+   * @param errorMessageSet set of error messages
+   * @param httpResponse HttpServletResponse
+   * @return Map&lt;String, Object&gt; - "message to 'array of error messages'"
+   */
+  public static Map<String, Object> makeErrorResponse(Set<String> errorMessageSet, HttpServletResponse httpResponse) {
+    httpResponse.setStatus(HttpStatus.BAD_REQUEST.value());
+    return (new HashMap<String, Object>() {
+      { put("message", errorMessageSet); }
+    });
   }
+
 }

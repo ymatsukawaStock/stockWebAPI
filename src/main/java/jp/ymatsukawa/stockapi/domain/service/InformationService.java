@@ -75,7 +75,7 @@ public class InformationService {
      * return empty list if record is not found.
      */
     if(informationIdToTags.isEmpty()) {
-      return new ArrayList<BridgeInformation>() {};
+      return null;
     }
 
     /**
@@ -91,7 +91,7 @@ public class InformationService {
      * return empty list if record is not found.
      */
     if(information.isEmpty()) {
-      return new ArrayList<BridgeInformation>() {};
+      return null;
     }
 
     /**
