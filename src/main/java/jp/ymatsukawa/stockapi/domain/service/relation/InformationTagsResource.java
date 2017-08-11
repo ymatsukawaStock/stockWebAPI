@@ -34,8 +34,28 @@ public class InformationTagsResource {
      *  BridgeInformationTags(2, "example"),
      *  ...]
      */
-    List<BridgeInformationTags> informationTags = informationTagsRepository.findTagNameByInfomationIds(tags, tags.size());
+    List<BridgeInformationTags> informationTags = informationTagsRepository.findInformationByTag(tags, tags.size());
+    return this.convertInformationIdToTags(informationTags);
+  }
 
+  public Map<Long, List<String>> getInformationidToTags(
+    InformationTagsRepository informationTagsRepository,
+    long informationId
+  ) {
+    /**
+     * get records of BridgeInformation(informationId, tag's name)
+     *
+     * ex.
+     * [BridgeInformationTags(1, "example"),
+     *  BridgeInformationTags(1, "sample"),
+     *  BridgeInformationTags(2, "example"),
+     *  ...]
+     */
+    List<BridgeInformationTags> informationTags = informationTagsRepository.findTagByInformation(informationId);
+    return this.convertInformationIdToTags(informationTags);
+  }
+
+  private Map<Long, List<String>> convertInformationIdToTags(List<BridgeInformationTags> informationTags) {
     /**
      * map BridgeInformationTags' informationId -> name
      *
@@ -51,8 +71,12 @@ public class InformationTagsResource {
       Long id = informationTag.getInformationId();
       String newTag = informationTag.getTag();
 
-      if(informationIdToTags.get(id) == null) {
-        informationIdToTags.put(id, new ArrayList<String>() { { add(newTag); } });
+      if (informationIdToTags.get(id) == null) {
+        informationIdToTags.put(id, new ArrayList<String>() {
+          {
+            add(newTag);
+          }
+        });
       } else {
         List<String> newTags = informationIdToTags.get(id);
         newTags.add(newTag);

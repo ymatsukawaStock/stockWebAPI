@@ -41,6 +41,17 @@
         LIMIT #{limit}
     </select>
 
+    <select id="findByInformationId" resultType="jp.ymatsukawa.stockapi.domain.entity.db.Information">
+      SELECT
+        informationid,
+        subject,
+        detail
+      FROM
+        information
+      WHERE
+        informationid = #{informationId}
+    </select>
+
     <insert id="save" timeout="20" parameterType="Information" useGeneratedKeys="true" keyProperty="information.informationId" keyColumn="informationid">
         INSERT INTO
           information

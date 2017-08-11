@@ -1,6 +1,7 @@
 package jp.ymatsukawa.stockapi.controller;
 
 import jp.ymatsukawa.stockapi.controller.entity.information.InformationCreation;
+import jp.ymatsukawa.stockapi.controller.entity.information.InformationDetail;
 import jp.ymatsukawa.stockapi.controller.entity.information.InformationSubject;
 import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformation;
 import jp.ymatsukawa.stockapi.tool.communication.RequestValidator;
@@ -73,6 +74,42 @@ public class InformationController {
       List<BridgeInformation> result = this.informationService.getAll(
         subject.getLimit(), subject.getTag(), subject.getSort(), subject.getSortBy()
       );
+      return ResponseFormatter.makeResponse(result, httpResponse);
+    } catch (Exception e) {
+      logger.warn("client ip={} is requested to information domain and happened error: {}", httpRequest.getRemoteUser(), e.getMessage());
+      return ResponseFormatter.makeResponse(HttpStatus.INTERNAL_SERVER_ERROR, httpResponse);
+    }
+  }
+
+
+  /**
+   * get specific information <br />
+   * See External Design Stock API. TODO: put uri
+   * @param httpRequest servlet request.
+   * @param httpResponse servlet response.
+   * @return Map&lt;String, Object&gt;. At http resepose body, json is written.
+   */
+  @RequestMapping(
+    method = RequestMethod.GET,
+    value = "/information/{informationId}"
+  )
+  public Map<String, Object> getInformationDetail(
+    HttpServletRequest httpRequest,
+    HttpServletResponse httpResponse,
+    @PathVariable("informationId") long informationId
+  ) {
+    /**
+     * validate request parameter
+     * when invalid, response is "400 Bad Request"
+     */
+    InformationDetail detail = new InformationDetail(informationId);
+    /**
+     * 1. get entity from service layer
+     * 2. set http header
+     * 3. return http body as response by entity-list
+     */
+    try {
+      BridgeInformation result = this.informationService.getSpecificInformation(detail.getInformationId());
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {
       logger.warn("client ip={} is requested to information domain and happened error: {}", httpRequest.getRemoteUser(), e.getMessage());
