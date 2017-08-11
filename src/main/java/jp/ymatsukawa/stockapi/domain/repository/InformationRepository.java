@@ -22,6 +22,15 @@ public interface InformationRepository {
   );
 
   /**
+   * Find specific information record<br />
+   * @param informationId to specify information.
+   * @return specified information. If record does not found, returns empty.
+   */
+  Information findByInformationId(
+    @Param("informationId") long informationId
+  );
+
+  /**
    * Save information data(subject and detail) with tag. <br />
    * tag (name - List of String, raw data is comma separated) is optional. <br />
    * If requirements "no tags" exist, pass argument of "tag" to empty list.

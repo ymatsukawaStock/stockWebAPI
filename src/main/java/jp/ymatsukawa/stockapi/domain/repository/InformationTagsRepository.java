@@ -11,12 +11,21 @@ import java.util.Set;
 public interface InformationTagsRepository {
   /**
    * Find informationid and tagname record which related informationid.
-   * @param informationIds list of informationid
-   * @return List of DBInformationTags; informationId and tagname
+   * @param tags name set of tag
+   * @return List of Bridge InformationTags
    */
-  List<BridgeInformationTags> findTagNameByInfomationIds(
+  List<BridgeInformationTags> findInformationByTag(
     @Param("tags") Set<String> tags,
     @Param("tagNumbers") int tagNumbers
+  );
+
+  /**
+   * Find informationid and tagname record which related informationid.
+   * @param informationId list of informationid
+   * @return InformationTag
+   */
+  List<BridgeInformationTags> findTagByInformation(
+    @Param("informationId") long informationId
   );
 
   void saveRelationByInfoIdAndTagNames(

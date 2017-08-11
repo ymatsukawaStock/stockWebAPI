@@ -28,13 +28,13 @@ public class InformationService {
 
   /**
    * Get list of information. <br />
-   * When information is not registered, empty list [] is returned.
+   * When information is not found, returns null.
    * @param limit limit of getting information.
    * @param tags tags information has. blank, single word or comma separated.
    * @param sort sort object, "id" or "date"
    * @param sortBy sort way "asc" or "desc"
    * @return List of Information entity.
-   * @return empty list when information is not registered.
+   * @return null when information is not found.
    * @throws Exception when error occurs at process of RDBMS.
    */
   @Transactional
@@ -107,6 +107,41 @@ public class InformationService {
   }
 
   /**
+   * Get specific information by informationId.<br />
+   * When information is not found, return null.
+   * @param informationId to specify information
+   * @return specified information entity.
+   * @return null when data is not found.
+   * @throws Exception when error occurs at process of RDBMS.
+   */
+  @Transactional
+  public BridgeInformation getSpecificInformation(
+    long informationId
+  ) throws Exception {
+    /**
+     * When called and get record by informationId,
+     * the record can be multiple.
+     * because there is case tag is registered over two times to one informationId.
+     */
+    Information information = this.informationRepository.findByInformationId(informationId);
+    if(information == null) {
+      return null;
+    }
+
+    Map<Long, List<String>> informationIdToTags = InformationTagsResource.getInstance().getInformationidToTags(
+      informationTagsRepository, informationId
+    );
+
+    BridgeInformation entity = null;
+    if(informationIdToTags.isEmpty()) {
+      entity = new BridgeInformation(information, new ArrayList<String>(){});
+    } else {
+      entity = new BridgeInformation(information, informationIdToTags.get(informationId));
+    }
+    return entity;
+  }
+
+  /**
    * Registers information with tag.<br />
    * if tag(s) is not registered, save it as new.
    * @param information - Information entity. Required properties are "subject" and "detail".
@@ -143,8 +178,8 @@ public class InformationService {
       // 2. chains relation between informationId and tagId
       Set<String> tagsRelatedToInformationId = new HashSet<>(ListConverter.getListBySplit(tag.getName(), ","));
       informationTagsRepository.saveRelationByInfoIdAndTagNames(
-          information.getInformationId(),
-          tagsRelatedToInformationId
+        information.getInformationId(),
+        tagsRelatedToInformationId
       );
     }
 

@@ -19,7 +19,7 @@ public class Information {
   }
 
   /**
-   * used as bean at InformationService.findAll is called.<br />
+   * used as bean at InformationService.getAll<br />
    */
   public Information(
     long informationId, String subject, Timestamp created, Timestamp updated
@@ -29,6 +29,20 @@ public class Information {
     this.created = new SimpleDateFormat("yyyy/MM/dd").format(created);
     this.updated = new SimpleDateFormat("yyyy/MM/dd").format(updated);
   }
+
+  /**
+   * used as bean at InformationService.getSpecificInformation
+   */
+  public Information(
+    long informationId, String subject, String detail, Timestamp created, Timestamp updated
+  ) {
+    this.informationId = informationId;
+    this.subject = subject;
+    this.detail = detail;
+    this.created = new SimpleDateFormat("yyyy/MM/dd").format(created);
+    this.updated = new SimpleDateFormat("yyyy/MM/dd").format(updated);
+  }
+
   @NonNull
   private long informationId;
   @NonNull

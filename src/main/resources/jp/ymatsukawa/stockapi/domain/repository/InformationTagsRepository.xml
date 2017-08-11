@@ -3,7 +3,7 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="jp.ymatsukawa.stockapi.domain.repository.InformationTagsRepository">
-    <select id="findTagNameByInfomationIds" resultType="jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformationTags">
+    <select id="findInformationByTag" resultType="jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformationTags">
         SELECT
           informationid,
           name
@@ -34,6 +34,17 @@
           )
         </if>
     </select>
+
+    <select id="findTagByInformation" resultType="jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformationTags">
+        SELECT
+          informationid,
+          name
+        FROM
+          viewinformationtags
+        WHERE
+          informationid = #{informationId}
+    </select>
+
     <insert id="saveRelationByInfoIdAndTagNames">
         INSERT INTO
           informationtags

@@ -13,6 +13,7 @@ public class BridgeInformation {
   public BridgeInformation(Information Information, List<String> tag) {
     this.informationId = Information.getInformationId();
     this.subject = Information.getSubject();
+    this.detail  = Information.getDetail();
     this.created = Information.getCreated();
     this.updated = Information.getUpdated();
     this.tag = tag;
@@ -20,6 +21,7 @@ public class BridgeInformation {
 
   private long informationId;
   private String subject;
+  private String detail;
   private String created;
   private String updated;
   private List<String> tag;
