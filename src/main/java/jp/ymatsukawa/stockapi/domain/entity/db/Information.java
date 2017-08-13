@@ -10,29 +10,7 @@ import java.text.SimpleDateFormat;
 @Data
 public class Information {
   public Information() {}
-  /**
-   * used as property of InformationController > Information
-   */
-  public Information(String subject, String detail) {
-    this.subject = subject;
-    this.detail = detail;
-  }
 
-  /**
-   * used as bean at InformationService.getAll<br />
-   */
-  public Information(
-    long informationId, String subject, Timestamp created, Timestamp updated
-  ) {
-    this.informationId = informationId;
-    this.subject = subject;
-    this.created = new SimpleDateFormat("yyyy/MM/dd").format(created);
-    this.updated = new SimpleDateFormat("yyyy/MM/dd").format(updated);
-  }
-
-  /**
-   * used as bean at InformationService.getSpecificInformation
-   */
   public Information(
     long informationId, String subject, String detail, Timestamp created, Timestamp updated
   ) {

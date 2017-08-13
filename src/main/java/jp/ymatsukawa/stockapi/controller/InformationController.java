@@ -3,7 +3,10 @@ package jp.ymatsukawa.stockapi.controller;
 import jp.ymatsukawa.stockapi.controller.entity.information.InformationCreation;
 import jp.ymatsukawa.stockapi.controller.entity.information.InformationDetail;
 import jp.ymatsukawa.stockapi.controller.entity.information.InformationSubject;
+import jp.ymatsukawa.stockapi.controller.entity.information.InformationUpdation;
 import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformation;
+import jp.ymatsukawa.stockapi.domain.entity.db.Information;
+import jp.ymatsukawa.stockapi.domain.entity.db.Tag;
 import jp.ymatsukawa.stockapi.tool.communication.RequestValidator;
 import jp.ymatsukawa.stockapi.tool.communication.ResponseFormatter;
 import jp.ymatsukawa.stockapi.domain.service.InformationService;
@@ -154,6 +157,55 @@ public class InformationController {
      */
     try {
       BridgeInformation result = this.informationService.create(creation.getInformation(), creation.getTag());
+      return ResponseFormatter.makeResponse(result, httpResponse);
+    } catch (Exception e) {
+      logger.warn("client ip={} requested information domain and happened error={}", httpRequest.getRemoteAddr(), e.getMessage());
+      return ResponseFormatter.makeResponse(HttpStatus.INTERNAL_SERVER_ERROR, httpResponse);
+    }
+  }
+
+  /**
+   * update information.
+   * @param httpRequest servlet request.
+   * @param httpResponse servlet response.
+   * @param updation union beans of Information(subject, detail) and Tag(name)
+   * @param bindingResult if not valid at "creation" bean, size is over 0.
+   * @return Map&lt;String, Object&gt;. updated information which includes tag
+   */
+  @RequestMapping(
+    consumes = MediaType.APPLICATION_JSON_VALUE,
+    method = RequestMethod.PUT,
+    value = "/information/edit/{informationId}"
+  )
+  public Map<String, Object> updateInformation(
+    HttpServletRequest  httpRequest,
+    HttpServletResponse httpResponse,
+    @PathVariable("informationId") long informationId,
+    @Valid @RequestBody InformationUpdation updation,
+    BindingResult bindingResult
+  ) {
+    // TODO: commonize creation and updation union entity
+    /**
+     * validate request parameter
+     * when invalid, response as "400 bad request"
+     */
+    Set errors = RequestValidator.getErrors(bindingResult);
+    if(!errors.isEmpty()) {
+      logger.info("client ip={} sent bad request with body={}", httpRequest.getRemoteAddr(), httpResponse);
+      return ResponseFormatter.makeErrorResponse(errors, httpResponse);
+    }
+
+    /**
+     * 1. get entity from service layer
+     * 2. set http header
+     * 3. return http body as response by entity
+     */
+    try {
+      Information information = updation.getInformation();
+      Tag tag = updation.getTag();
+      BridgeInformation result = this.informationService.update(
+        informationId, information.getSubject(), information.getDetail(), tag.getName()
+      );
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {
       logger.warn("client ip={} requested information domain and happened error={}", httpRequest.getRemoteAddr(), e.getMessage());

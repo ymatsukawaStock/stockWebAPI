@@ -45,7 +45,9 @@
       SELECT
         informationid,
         subject,
-        detail
+        detail,
+        created,
+        updated
       FROM
         information
       WHERE
@@ -59,4 +61,13 @@
         VALUES
           (#{subject}, #{detail}, NOW(), NOW())
     </insert>
+
+    <update id="update" timeout="20" >
+        UPDATE
+          information
+        SET
+          subject = #{subject}, detail = #{detail}, updated = NOW()
+        WHERE
+          informationid = #{informationId}
+    </update>
 </mapper>

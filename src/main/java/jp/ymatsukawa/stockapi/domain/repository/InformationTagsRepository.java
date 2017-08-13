@@ -1,6 +1,7 @@
 package jp.ymatsukawa.stockapi.domain.repository;
 
 import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformationTags;
+import jp.ymatsukawa.stockapi.domain.entity.db.Information;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -31,5 +32,14 @@ public interface InformationTagsRepository {
   void saveRelationByInfoIdAndTagNames(
     @Param("informationid") Long informationId,
     @Param("names")Set<String> names
+  );
+
+  void deleteRelationByInformationId(
+    @Param("informationId") long informationid
+  );
+
+  void deleteRelationByInformationIdAndTag(
+    @Param("informationId") long informationId,
+    @Param("tags") Set<String> tags
   );
 }
