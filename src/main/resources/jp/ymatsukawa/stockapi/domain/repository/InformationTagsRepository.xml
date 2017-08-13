@@ -57,4 +57,34 @@
             </if>
         </foreach>
     </insert>
+
+    <delete id="deleteRelationByInformationId">
+        DELETE
+          FROM informationtags
+        WHERE
+          informationid = #{informationId}
+    </delete>
+
+    <delete id="deleteRelationByInformationIdAndTag">
+        DELETE
+          FROM informationtags
+        WHERE
+          informationid = #{informationId}
+        <if test="tags.size() > 0">
+        AND
+          tagid IN (
+            SELECT
+              tagid
+            FROM
+              tag
+            WHERE
+            <foreach item="tag" index="index" collection="tags">
+              name = #{tag}
+              <if test="(index + 1) != tags.size()"> <!-- APPEND "OR" until reach final index -->
+                OR
+              </if>
+            </foreach>
+          )
+        </if>
+    </delete>
 </mapper>

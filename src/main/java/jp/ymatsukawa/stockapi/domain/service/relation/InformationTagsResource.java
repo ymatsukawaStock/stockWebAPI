@@ -2,6 +2,8 @@ package jp.ymatsukawa.stockapi.domain.service.relation;
 
 import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformationTags;
 import jp.ymatsukawa.stockapi.domain.repository.InformationTagsRepository;
+import jp.ymatsukawa.stockapi.domain.repository.TagRepository;
+import jp.ymatsukawa.stockapi.tool.converter.ListConverter;
 
 import java.util.*;
 
@@ -53,6 +55,42 @@ public class InformationTagsResource {
      */
     List<BridgeInformationTags> informationTags = informationTagsRepository.findTagByInformation(informationId);
     return this.convertInformationIdToTags(informationTags);
+  }
+
+  public void saveTagRelationNotYetStoraged(
+    TagRepository tagRepository,
+    String addedTags
+  ) {
+    /**
+     * 1. save tag name which is not yet saved at DB.
+     * 2. chains relation between informationId and tagId
+     * ex. at 1.
+     *
+     * DB...
+     * tag: name ... "foo", "qux", "sample", "example"
+     * when parameter tags "foo,bar"
+     * then
+     * tag: name ... "foo", "qux", "sample", "example", "bar"
+     */
+    // 1. save tag name which is not yet saved at DB.
+    Set<String> newAddedTags = new HashSet<>(ListConverter.getListBySplit(addedTags, ","));
+    newAddedTags.removeAll(tagRepository.findSavedName(newAddedTags));
+    if(!newAddedTags.isEmpty()) {
+      tagRepository.save(newAddedTags);
+    } else {
+      return; // do nothing when added tags is does not exist
+    }
+  }
+
+  public void chainsRelationBetweenInformationIdAndTag(
+    InformationTagsRepository informationTagsRepository,
+    long informationId, Set<String> addedTags
+  ) {
+    // chains relation between informationId and tagId
+     informationTagsRepository.saveRelationByInfoIdAndTagNames(
+      informationId,
+      addedTags
+    );
   }
 
   private Map<Long, List<String>> convertInformationIdToTags(List<BridgeInformationTags> informationTags) {

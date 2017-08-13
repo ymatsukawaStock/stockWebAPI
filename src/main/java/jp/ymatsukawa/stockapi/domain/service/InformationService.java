@@ -1,8 +1,11 @@
 package jp.ymatsukawa.stockapi.domain.service;
 
 import java.util.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformation;
+import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformationTags;
 import jp.ymatsukawa.stockapi.domain.entity.db.Information;
 import jp.ymatsukawa.stockapi.domain.entity.db.Tag;
 import jp.ymatsukawa.stockapi.domain.repository.InformationTagsRepository;
@@ -155,34 +158,120 @@ public class InformationService {
      */
     informationRepository.save(information, information.getSubject(), information.getDetail());
 
-    // TODO: avoid multiple split
-    /**
-     * when parameter's tag exist,
-     * 1. save tag name which is not yet saved at DB.
-     * 2. chains relation between informationId and tagId
-     * ex. of 1.
-     * DB
-     * tag: name ... "foo", "qux", "sample", "example"
-     * when parameter tags "foo,bar"
-     * then
-     * tag: name ... "foo", "qux", "sample", "example", "bar"
-     */
     if(!tag.getName().isEmpty()) {
-      // 1. save tag name which is not yet saved at DB.
-      Set<String> newAddedTags = new HashSet<>(ListConverter.getListBySplit(tag.getName(), ","));
-      newAddedTags.removeAll(tagRepository.findSavedName(newAddedTags));
-      if(!newAddedTags.isEmpty()) {
-        tagRepository.save(newAddedTags);
-      }
-
-      // 2. chains relation between informationId and tagId
-      Set<String> tagsRelatedToInformationId = new HashSet<>(ListConverter.getListBySplit(tag.getName(), ","));
-      informationTagsRepository.saveRelationByInfoIdAndTagNames(
-        information.getInformationId(),
-        tagsRelatedToInformationId
+      InformationTagsResource.getInstance().saveTagRelationNotYetStoraged(
+        tagRepository,
+        tag.getName()
+      );
+      InformationTagsResource.getInstance().chainsRelationBetweenInformationIdAndTag(
+        informationTagsRepository,
+        information.getInformationId(), new HashSet<>(ListConverter.getListBySplit(tag.getName(), ","))
       );
     }
 
     return (new BridgeInformation(information, ListConverter.getListBySplit(tag.getName(), ",")));
   }
+
+  /**
+   * update information with tag.<br />
+   * if informationId does not exist, return null.<br />
+   *
+   * @param informationId - specific informationId
+   * @param subject - information subject to update .
+   * @param detail - information detail to update.
+   * @param tags - tag name comma separated, single word or empty to update.
+   * @throws Exception - when error occurs at process of RDBMS.
+   */
+  @Transactional
+  public BridgeInformation update(
+    long informationId, String subject, String detail, String tags
+  ) throws Exception {
+    /**
+     * check whether informationId exist
+     */
+    Information checkInfo = this.informationRepository.findByInformationId(informationId);
+    if(checkInfo == null) {
+      return null;
+    }
+
+    /**
+     * when request tag is empty -- delete tag related by informationId<br />
+     * when request tag is not empty<br/>
+     * before process, register tag which is not yet storaged.<br />
+     * 1. if information does not have tag, register them all.
+     * 2. if information has tag,<br />
+     * check "delete tags" from exist tag and "add tags"<br />
+     * 1st, delete them if element exists.
+     * 2nd, add them  if element exists.
+     */
+    List<BridgeInformationTags> informationTags = this.informationTagsRepository.findTagByInformation(informationId);
+    if(tags.isEmpty()) {
+     /*
+      * when information has tag and request comes empty tag,
+      * delete all tag related by informationId
+      */
+      if(!informationTags.isEmpty()) {
+        informationTagsRepository.deleteRelationByInformationId(informationId);
+      }
+    } else {
+      /*
+       * before register tag, save tag not yet storaged to DB
+       */
+      InformationTagsResource.getInstance().saveTagRelationNotYetStoraged(
+        tagRepository,
+        tags
+      );
+
+      if(informationTags.isEmpty()) {
+        /**
+         * when information does not have tag and request tag comes,
+         * register all tag.
+         */
+        Set<String> newAddedTags = new HashSet<>(ListConverter.getListBySplit(tags, ","));
+        InformationTagsResource.getInstance().chainsRelationBetweenInformationIdAndTag(
+          informationTagsRepository,
+          informationId, newAddedTags
+        );
+      } else {
+        /**
+         * when information has tag and request tag comes,
+         * 1st, clear up "delete tag" and "add tag"
+         * 2nd, delete tag if "delete tag" exists.
+         * 3rd, register tag if "add tag" exists.
+         */
+
+        /**
+         * get deleted tag set by Set calculation ... "exist tag set" - "request tag set"
+         * also get add tag set by Set calculation ... "request tag set" - "exist tag set"
+         */
+        Set<String> requestTagSet = new HashSet<>(ListConverter.getListBySplit(tags, ","));
+        Set<String> existTagSet = informationTags.stream().map(infoTag -> infoTag.getTag()).collect(Collectors.toSet());
+        // copy because set calculation is mutable.
+        Set<String> existTagSetCopy = existTagSet.stream().map(String::new).collect(Collectors.toSet());
+
+        // check whether exist delete tag.
+        existTagSet.removeAll(requestTagSet);
+        if(!existTagSet.isEmpty()) {
+          this.informationTagsRepository.deleteRelationByInformationIdAndTag(informationId, existTagSet);
+        }
+        // check whether exist add tag
+        requestTagSet.removeAll(existTagSetCopy);
+        if(!requestTagSet.isEmpty()) {
+          InformationTagsResource.getInstance().chainsRelationBetweenInformationIdAndTag(
+            informationTagsRepository,
+            informationId, requestTagSet
+          );
+        }
+      }
+
+    }
+
+    /**
+     * update information and return re-get bean.
+     */
+    this.informationRepository.update(informationId, subject, detail);
+    Information information = this.informationRepository.findByInformationId(informationId);
+    return (new BridgeInformation(information, ListConverter.getListBySplit(tags, ",")));
+  }
+
 }

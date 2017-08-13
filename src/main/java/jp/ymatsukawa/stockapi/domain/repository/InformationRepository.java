@@ -42,4 +42,16 @@ public interface InformationRepository {
     @Param("subject") String subject,
     @Param("detail")  String detail
   );
+
+  /**
+   * update information specified by informationId
+   * @param informationId - to specify information
+   * @param subject - subject to update
+   * @param detail - detail to update
+   */
+  void update(
+    @Param("informationId") long informationId,
+    @Param("subject") String subject,
+    @Param("detail")  String detail
+  );
 }
