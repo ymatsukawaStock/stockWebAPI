@@ -61,6 +61,7 @@ public class InformationController {
      * validate request parameter
      * when invalid, response is "400 Bad Request"
      */
+    logger.info(String.valueOf(httpRequest.getAttribute("accountId")));
     InformationSubject subject = new InformationSubject(limit, tag, sort, sortBy);
     Set errors = RequestValidator.getErrors(subject);
     if(!errors.isEmpty()) {
