@@ -27,7 +27,6 @@ public class AuthnInterceptorHandler extends HandlerInterceptorAdapter {
    */
   @Override
   public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-    // TODO: not request parameter but http header.
     String accessToken = request.getHeader("Authorization");
     if(accessToken == null || !accessToken.startsWith("Bearer ")) {
       response.setStatus(HttpStatus.UNAUTHORIZED.value());

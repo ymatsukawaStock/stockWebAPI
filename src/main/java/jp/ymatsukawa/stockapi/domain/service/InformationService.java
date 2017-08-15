@@ -307,10 +307,6 @@ public class InformationService {
             informationTagsRepository,
             informationId, requestTagSet
           );
-          accountTagRelation.chainsRelationBetweenAccountAndTag(
-            accountRepository,
-            accountId, requestTagSet
-          );
         }
       }
 
