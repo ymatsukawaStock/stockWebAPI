@@ -4,19 +4,12 @@ import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformationTags;
 import jp.ymatsukawa.stockapi.domain.repository.InformationTagsRepository;
 import jp.ymatsukawa.stockapi.domain.repository.TagRepository;
 import jp.ymatsukawa.stockapi.tool.converter.ListConverter;
+import org.springframework.stereotype.Service;
 
 import java.util.*;
 
-public class InformationTagsResource {
-  private InformationTagsResource() {}
-  private static class InformationTagsSupport {
-    private static final InformationTagsResource INSTANCE = new InformationTagsResource();
-  }
-
-  public static InformationTagsResource getInstance() {
-    return InformationTagsSupport.INSTANCE;
-  }
-
+@Service
+public class InformationTagsRelation {
   /**
    * get map of informationId to tag name list.
    * @param informationTagsRepository to get information and tag name
@@ -57,7 +50,7 @@ public class InformationTagsResource {
     return this.convertInformationIdToTags(informationTags);
   }
 
-  public void saveTagRelationNotYetStoraged(
+  public Set<String> saveTagRelationNotYetStoraged(
     TagRepository tagRepository,
     String addedTags
   ) {
@@ -77,9 +70,9 @@ public class InformationTagsResource {
     newAddedTags.removeAll(tagRepository.findSavedName(newAddedTags));
     if(!newAddedTags.isEmpty()) {
       tagRepository.save(newAddedTags);
-    } else {
-      return; // do nothing when added tags is does not exist
+      return newAddedTags;
     }
+    return newAddedTags;
   }
 
   public void chainsRelationBetweenInformationIdAndTag(

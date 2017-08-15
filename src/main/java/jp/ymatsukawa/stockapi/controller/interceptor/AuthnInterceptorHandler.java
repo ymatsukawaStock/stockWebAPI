@@ -5,6 +5,7 @@ import jp.ymatsukawa.stockapi.domain.repository.AccountRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
@@ -27,18 +28,21 @@ public class AuthnInterceptorHandler extends HandlerInterceptorAdapter {
   @Override
   public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
     // TODO: not request parameter but http header.
-    String accessToken = request.getParameter("accessToken");
-    if(accessToken == null) {
-      response.setStatus(HttpStatus.FORBIDDEN.value());
+    String accessToken = request.getHeader("Authorization");
+    if(accessToken == null || !accessToken.startsWith("Bearer ")) {
+      response.setStatus(HttpStatus.UNAUTHORIZED.value());
+      response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "not_requested_token_or_invalid_token");
       logger.info("not authenticated request from {}", request.getRemoteAddr());
       return false;
     }
 
     Account account = null;
     try {
-      account = accountRepository.findAuthenticateAccountByToken(accessToken);
+      account = accountRepository.findAuthenticateAccountByToken(accessToken.replaceAll("Bearer ", ""));
     } catch (Exception e) {
       logger.warn("at interceptor, exception happens because of RDBMS process. Detail is ... {}", e.getMessage());
+      response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+      return false;
     }
     if(account == null) {
       response.setStatus(HttpStatus.FORBIDDEN.value());
@@ -46,7 +50,7 @@ public class AuthnInterceptorHandler extends HandlerInterceptorAdapter {
       return false;
     }
 
-    request.setAttribute("accountId", String.valueOf(account.getAccountId()));
+    request.setAttribute("accountId", account.getAccountId());
     return true;
   }
 

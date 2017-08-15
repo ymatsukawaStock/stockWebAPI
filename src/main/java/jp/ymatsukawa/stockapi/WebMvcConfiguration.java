@@ -9,6 +9,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
 
 @Configuration
 public class WebMvcConfiguration extends WebMvcConfigurerAdapter {
+  // set bean because interceptor handler needs autowired annotation
+  // https://stackoverflow.com/a/18218439
   @Bean
   public AuthnInterceptorHandler authnInterceptorHandler() {
     return new AuthnInterceptorHandler();

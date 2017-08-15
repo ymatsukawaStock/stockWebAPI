@@ -10,6 +10,7 @@ import jp.ymatsukawa.stockapi.domain.entity.db.Tag;
 import jp.ymatsukawa.stockapi.tool.communication.RequestValidator;
 import jp.ymatsukawa.stockapi.tool.communication.ResponseFormatter;
 import jp.ymatsukawa.stockapi.domain.service.InformationService;
+import jp.ymatsukawa.stockapi.tool.converter.RequestConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,7 +62,6 @@ public class InformationController {
      * validate request parameter
      * when invalid, response is "400 Bad Request"
      */
-    logger.info(String.valueOf(httpRequest.getAttribute("accountId")));
     InformationSubject subject = new InformationSubject(limit, tag, sort, sortBy);
     Set errors = RequestValidator.getErrors(subject);
     if(!errors.isEmpty()) {
@@ -140,7 +140,6 @@ public class InformationController {
     @Valid @RequestBody InformationCreation creation,
     BindingResult bindingResult
   ) {
-    // TODO: "limit" should be validated when tag is not set.
     /**
      * validate request parameter
      * when invalid, response as "400 bad request"
@@ -157,7 +156,8 @@ public class InformationController {
      * 3. return http body as response by entity
      */
     try {
-      BridgeInformation result = this.informationService.create(creation.getInformation(), creation.getTag());
+      long accountId = RequestConverter.getRequestAttribute(httpRequest, "accountId");
+      BridgeInformation result = this.informationService.create(creation.getInformation(), creation.getTag(), accountId);
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {
       logger.warn("client ip={} requested information domain and happened error={}", httpRequest.getRemoteAddr(), e.getMessage());
@@ -204,8 +204,9 @@ public class InformationController {
     try {
       Information information = updation.getInformation();
       Tag tag = updation.getTag();
+      long accountId = RequestConverter.getRequestAttribute(httpRequest, "accountId");
       BridgeInformation result = this.informationService.update(
-        informationId, information.getSubject(), information.getDetail(), tag.getName()
+        informationId, information.getSubject(), information.getDetail(), tag.getName(), accountId
       );
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {
