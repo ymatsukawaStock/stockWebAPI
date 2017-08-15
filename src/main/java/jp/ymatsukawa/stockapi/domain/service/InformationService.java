@@ -1,16 +1,19 @@
 package jp.ymatsukawa.stockapi.domain.service;
 
 import java.util.*;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformation;
 import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformationTags;
+import jp.ymatsukawa.stockapi.domain.entity.db.Account;
 import jp.ymatsukawa.stockapi.domain.entity.db.Information;
 import jp.ymatsukawa.stockapi.domain.entity.db.Tag;
+import jp.ymatsukawa.stockapi.domain.repository.AccountRepository;
 import jp.ymatsukawa.stockapi.domain.repository.InformationTagsRepository;
 import jp.ymatsukawa.stockapi.domain.repository.TagRepository;
-import jp.ymatsukawa.stockapi.domain.service.relation.InformationTagsResource;
+import jp.ymatsukawa.stockapi.domain.service.relation.AccountInformationRelation;
+import jp.ymatsukawa.stockapi.domain.service.relation.AccountTagRelation;
+import jp.ymatsukawa.stockapi.domain.service.relation.InformationTagsRelation;
 import jp.ymatsukawa.stockapi.tool.converter.ListConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,7 +30,15 @@ public class InformationService {
   @Autowired
   private TagRepository tagRepository;
   @Autowired
+  private AccountRepository accountRepository;
+  @Autowired
   private InformationTagsRepository informationTagsRepository;
+  @Autowired
+  private InformationTagsRelation informationTagsRelation;
+  @Autowired
+  private AccountInformationRelation accountInformationRelation;
+  @Autowired
+  private AccountTagRelation accountTagRelation;
 
   /**
    * Get list of information. <br />
@@ -70,7 +81,7 @@ public class InformationService {
     if(!tags.isEmpty()) {
       tagSet = new HashSet<>(ListConverter.getListBySplit(tags, ","));
     }
-    Map<Long, List<String>> informationIdToTags = InformationTagsResource.getInstance().getInformationidToTags(
+    Map<Long, List<String>> informationIdToTags = informationTagsRelation.getInformationidToTags(
       informationTagsRepository, tagSet
     );
 
@@ -131,7 +142,7 @@ public class InformationService {
       return null;
     }
 
-    Map<Long, List<String>> informationIdToTags = InformationTagsResource.getInstance().getInformationidToTags(
+    Map<Long, List<String>> informationIdToTags = informationTagsRelation.getInformationidToTags(
       informationTagsRepository, informationId
     );
 
@@ -152,21 +163,39 @@ public class InformationService {
    * @throws Exception - when error occurs at process of RDBMS.
    */
   @Transactional
-  public BridgeInformation create(Information information, Tag tag) throws Exception {
+  public BridgeInformation create(Information information, Tag tag, long accountId) throws Exception {
     /**
      * save information with "subject" and "detail"
      */
     informationRepository.save(information, information.getSubject(), information.getDetail());
 
     if(!tag.getName().isEmpty()) {
-      InformationTagsResource.getInstance().saveTagRelationNotYetStoraged(
-        tagRepository,
-        tag.getName()
-      );
-      InformationTagsResource.getInstance().chainsRelationBetweenInformationIdAndTag(
+      /**
+       * divide new added tag("foo") and all request tag("foo", "bar")
+       */
+      Set<String> newAddedTags = informationTagsRelation.saveTagRelationNotYetStoraged(tagRepository, tag.getName());
+      Set<String> allRequestTags = new HashSet<>(ListConverter.getListBySplit(tag.getName(), ","));
+      informationTagsRelation.chainsRelationBetweenInformationIdAndTag(
         informationTagsRepository,
-        information.getInformationId(), new HashSet<>(ListConverter.getListBySplit(tag.getName(), ","))
+        information.getInformationId(), allRequestTags
       );
+      /**
+       * chains account and information
+       */
+      accountInformationRelation.chainsRelationBetweenAccountAndInformation(
+        accountRepository,
+        accountId, information.getInformationId()
+      );
+      /**
+       * chains account and tag. if relation is already binded,
+       * do thing.
+       */
+      if(!newAddedTags.isEmpty()) {
+        accountTagRelation.chainsRelationBetweenAccountAndTag(
+          accountRepository,
+          accountId, newAddedTags
+        );
+      }
     }
 
     return (new BridgeInformation(information, ListConverter.getListBySplit(tag.getName(), ",")));
@@ -184,13 +213,21 @@ public class InformationService {
    */
   @Transactional
   public BridgeInformation update(
-    long informationId, String subject, String detail, String tags
+    long informationId, String subject, String detail, String tags, long accountId
   ) throws Exception {
     /**
      * check whether informationId exist
      */
     Information checkInfo = this.informationRepository.findByInformationId(informationId);
     if(checkInfo == null) {
+      return null;
+    }
+    /**
+     * check whether request account is related to edit information.
+     * if not, do not permit to edit resource.
+     */
+    Account checkAccount = this.accountRepository.findAccountByAccountIdAndInformationId(accountId, informationId);
+    if(checkAccount == null) {
       return null;
     }
 
@@ -217,18 +254,19 @@ public class InformationService {
       /*
        * before register tag, save tag not yet storaged to DB
        */
-      InformationTagsResource.getInstance().saveTagRelationNotYetStoraged(
-        tagRepository,
-        tags
-      );
+      Set<String> addedTag = informationTagsRelation.saveTagRelationNotYetStoraged(tagRepository, tags);
+      /**
+       * chain relation between "account and tag" not "information and tag"
+       */
+      accountRepository.saveRelationByAccountIdAndTagNames(accountId, addedTag);
 
       if(informationTags.isEmpty()) {
         /**
          * when information does not have tag and request tag comes,
-         * register all tag.
+         * register all tag to information.
          */
         Set<String> newAddedTags = new HashSet<>(ListConverter.getListBySplit(tags, ","));
-        InformationTagsResource.getInstance().chainsRelationBetweenInformationIdAndTag(
+        informationTagsRelation.chainsRelationBetweenInformationIdAndTag(
           informationTagsRepository,
           informationId, newAddedTags
         );
@@ -249,15 +287,23 @@ public class InformationService {
         // copy because set calculation is mutable.
         Set<String> existTagSetCopy = existTagSet.stream().map(String::new).collect(Collectors.toSet());
 
-        // check whether exist delete tag.
+        /*
+         * check whether exist delete tags.
+         * note: tag deletion happens when "delete tag"
+         * deletion of information tag does not mean deletion of account tag
+         */
         existTagSet.removeAll(requestTagSet);
         if(!existTagSet.isEmpty()) {
           this.informationTagsRepository.deleteRelationByInformationIdAndTag(informationId, existTagSet);
         }
-        // check whether exist add tag
+
+        /*
+         * check whether exist add tag
+         * add them from informationTags and accountTags
+         */
         requestTagSet.removeAll(existTagSetCopy);
         if(!requestTagSet.isEmpty()) {
-          InformationTagsResource.getInstance().chainsRelationBetweenInformationIdAndTag(
+          informationTagsRelation.chainsRelationBetweenInformationIdAndTag(
             informationTagsRepository,
             informationId, requestTagSet
           );

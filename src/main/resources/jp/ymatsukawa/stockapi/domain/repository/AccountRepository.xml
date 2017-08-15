@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.ymatsukawa.stockapi.domain.repository.AccountRepository">
+    <select id="findAuthenticateAccountByToken" resultType="jp.ymatsukawa.stockapi.domain.entity.db.Account">
+        SELECT
+          accountid
+        FROM
+          viewaccountwithauthentication
+        WHERE
+          token = #{token}
+    </select>
+    <select id="findAccountByAccountIdAndInformationId" resultType="jp.ymatsukawa.stockapi.domain.entity.db.Account">
+        SELECT
+          accountid
+        FROM
+          viewaccountwithinformation
+        WHERE
+          accountid = #{accountId}
+        AND
+          informationid = #{informationId}
+    </select>
+
+    <insert id="saveRelationByAccountIdAndTagNames">
+        INSERT INTO
+          accounttags
+          (accountid, tagid)
+        VALUES
+        <foreach item="tag" index="index" collection="tags">
+            (#{accountId}, (SELECT tagid FROM tag WHERE name = #{tag}))
+            <if test="(index + 1) != tags.size()"> <!-- APPEND "," until reach final index -->
+                ,
+            </if>
+        </foreach>
+    </insert>
+    <insert id="saveRelationByAccountIdAndInformationId">
+        INSERT INTO
+          accountinformation
+          (accountid, informationid)
+        VALUES
+          (#{accountId}, #{informationId})
+    </insert>
+</mapper>
