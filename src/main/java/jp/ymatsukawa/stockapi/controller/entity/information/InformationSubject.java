@@ -32,7 +32,7 @@ public class InformationSubject {
 
   @Pattern(
     regexp = RegExp.Pattern.CREATED_OR_UPDATED,
-    message = "sort should be createdor updated"
+    message = "sort should be created or updated"
   )
   private String sort;
 

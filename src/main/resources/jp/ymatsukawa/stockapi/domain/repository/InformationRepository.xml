@@ -5,14 +5,17 @@
 <mapper namespace="jp.ymatsukawa.stockapi.domain.repository.InformationRepository">
     <select id="findAll" resultType="jp.ymatsukawa.stockapi.domain.entity.db.Information">
         SELECT
-          DISTINCT informationid, subject, created, updated
+          DISTINCT informationid,
+          subject,
+          created,
+          updated
         FROM
           viewinformationtags
         <if test="informationIds.size() > 0">
         WHERE
           <foreach item="informationId" index="index" collection="informationIds">
             informationid = #{informationId}
-            <if test="(index + 1) != informationIds.size()"> <!-- APPEND "AND" until reach final index -->
+            <if test="informationIds.size() > (index + 1)"> <!-- APPEND "OR" until reach final index -->
               OR
             </if>
           </foreach>

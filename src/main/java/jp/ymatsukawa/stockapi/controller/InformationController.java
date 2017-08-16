@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 // FIXME: build V1 endpoint. create super class > infra
+// TODO: set rate limit ... need KVS ... Redis
 @RequestMapping(
   produces = { MediaType.APPLICATION_JSON_VALUE }
 )
@@ -35,17 +36,6 @@ public class InformationController {
   @Autowired
   private InformationService informationService;
 
-  /**
-   * get information with limit, tag search, sort by date.<br />
-   * See External Design Stock API. TODO: put uri
-   * @param httpRequest servlet request.
-   * @param httpResponse servlet response.
-   * @param limit request param how many get information. Should be 1 to 2^32.
-   * @param tag request param what is tag of information. Should be blank, single word or comma separated.
-   * @param sort request param what is sort object of information. Should be "created" or "updated".
-   * @param sortBy request param how to sort information. Should be "desc" or "asc".
-   * @return Map&lt;String, Object&gt;. At http resepose body, json is written.
-   */
   @RequestMapping(
     method = RequestMethod.GET,
     value = "/information"
@@ -53,14 +43,13 @@ public class InformationController {
   public Map<String, Object> getInformationSubject(
     HttpServletRequest httpRequest,
     HttpServletResponse httpResponse,
-    @RequestParam(value = "limit") long limit,
+    @RequestParam(value = "limit",  required = false, defaultValue = "50")      long limit,
     @RequestParam(value = "tag",    required = false, defaultValue = "")        String tag,
     @RequestParam(value = "sort",   required = false, defaultValue = "created") String sort,
     @RequestParam(value = "sortBy", required = false, defaultValue = "desc")    String sortBy
   ) {
     /**
      * validate request parameter
-     * when invalid, response is "400 Bad Request"
      */
     InformationSubject subject = new InformationSubject(limit, tag, sort, sortBy);
     Set errors = RequestValidator.getErrors(subject);
@@ -72,27 +61,20 @@ public class InformationController {
     /**
      * 1. get entity-list from service layer
      * 2. set http header
-     * 3. return http body as response by entity-list
+     * 3. return body as entity-list
      */
     try {
-      List<BridgeInformation> result = this.informationService.getAll(
+      List<BridgeInformation> result = this.informationService.getSubject (
         subject.getLimit(), subject.getTag(), subject.getSort(), subject.getSortBy()
       );
+      httpResponse.setStatus(HttpStatus.OK.value());
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {
-      logger.warn("client ip={} is requested to information domain and happened error: {}", httpRequest.getRemoteUser(), e.getMessage());
+      logger.warn("client ip={} requested to information domain and happened error: {}", httpRequest.getRemoteUser(), e.getMessage());
       return ResponseFormatter.makeResponse(HttpStatus.INTERNAL_SERVER_ERROR, httpResponse);
     }
   }
 
-
-  /**
-   * get specific information <br />
-   * See External Design Stock API. TODO: put uri
-   * @param httpRequest servlet request.
-   * @param httpResponse servlet response.
-   * @return Map&lt;String, Object&gt;. At http resepose body, json is written.
-   */
   @RequestMapping(
     method = RequestMethod.GET,
     value = "/information/{informationId}"
@@ -104,9 +86,9 @@ public class InformationController {
   ) {
     /**
      * validate request parameter
-     * when invalid, response is "400 Bad Request"
      */
     InformationDetail detail = new InformationDetail(informationId);
+
     /**
      * 1. get entity from service layer
      * 2. set http header
@@ -116,7 +98,7 @@ public class InformationController {
       BridgeInformation result = this.informationService.getSpecificInformation(detail.getInformationId());
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {
-      logger.warn("client ip={} is requested to information domain and happened error: {}", httpRequest.getRemoteUser(), e.getMessage());
+      logger.warn("client ip={} requested to information domain and happened error: {}", httpRequest.getRemoteUser(), e.getMessage());
       return ResponseFormatter.makeResponse(HttpStatus.INTERNAL_SERVER_ERROR, httpResponse);
     }
   }
@@ -142,7 +124,6 @@ public class InformationController {
   ) {
     /**
      * validate request parameter
-     * when invalid, response as "400 bad request"
      */
     Set errors = RequestValidator.getErrors(bindingResult);
     if(!errors.isEmpty()) {
@@ -157,7 +138,10 @@ public class InformationController {
      */
     try {
       long accountId = RequestConverter.getRequestAttribute(httpRequest, "accountId");
-      BridgeInformation result = this.informationService.create(creation.getInformation(), creation.getTag(), accountId);
+      InformationCreation.Information information = creation.getInformation();
+      BridgeInformation result = this.informationService.create(
+        information.getSubject(), information.getDetail(), information.getTag(), accountId
+      );
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {
       logger.warn("client ip={} requested information domain and happened error={}", httpRequest.getRemoteAddr(), e.getMessage());
@@ -165,14 +149,6 @@ public class InformationController {
     }
   }
 
-  /**
-   * update information.
-   * @param httpRequest servlet request.
-   * @param httpResponse servlet response.
-   * @param updation union beans of Information(subject, detail) and Tag(name)
-   * @param bindingResult if not valid at "creation" bean, size is over 0.
-   * @return Map&lt;String, Object&gt;. updated information which includes tag
-   */
   @RequestMapping(
     consumes = MediaType.APPLICATION_JSON_VALUE,
     method = RequestMethod.PUT,
@@ -185,10 +161,8 @@ public class InformationController {
     @Valid @RequestBody InformationUpdation updation,
     BindingResult bindingResult
   ) {
-    // TODO: commonize creation and updation union entity
     /**
      * validate request parameter
-     * when invalid, response as "400 bad request"
      */
     Set errors = RequestValidator.getErrors(bindingResult);
     if(!errors.isEmpty()) {
@@ -202,11 +176,10 @@ public class InformationController {
      * 3. return http body as response by entity
      */
     try {
-      Information information = updation.getInformation();
-      Tag tag = updation.getTag();
+      InformationUpdation.Information information = updation.getInformation();
       long accountId = RequestConverter.getRequestAttribute(httpRequest, "accountId");
       BridgeInformation result = this.informationService.update(
-        informationId, information.getSubject(), information.getDetail(), tag.getName(), accountId
+        informationId, information.getSubject(), information.getDetail(), information.getTag(), accountId
       );
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {

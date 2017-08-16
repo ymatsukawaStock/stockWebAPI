@@ -21,16 +21,18 @@
             ON
               TAG.tagid = INFOTAG.tagid
             WHERE
+            <!-- search "AND" by "GROUP BY - HAVING - COUNT" way. -->
             <foreach item="tag" index="index" collection="tags">
               TAG.name = #{tag}
-              <if test="(index + 1) != tags.size()"> <!-- APPEND "OR" until reach final index -->
+              <if test="tags.size() > (index + 1)"> <!-- APPEND "OR" until reach final index -->
                 OR
               </if>
             </foreach>
             GROUP BY
               INFOTAG.informationid
             HAVING
-              COUNT(*) = #{tagNumbers}
+              <bind name="tagSize" value="tags.size()" />
+              COUNT(*) = #{tagSize}
           )
         </if>
     </select>
@@ -45,14 +47,14 @@
           informationid = #{informationId}
     </select>
 
-    <insert id="saveRelationByInfoIdAndTagNames">
+    <insert id="saveRelationByInfoIdAndTag">
         INSERT INTO
           informationtags
           (informationid, tagid)
         VALUES
-        <foreach item="name" index="index" collection="names">
-          (#{informationid}, (SELECT tagid FROM tag WHERE name = #{name}))
-            <if test="(index + 1) != names.size()"> <!-- APPEND "," until reach final index -->
+        <foreach item="tag" index="index" collection="tags">
+          (#{informationId}, (SELECT tagid FROM tag WHERE name = #{tag}))
+            <if test="tags.size() > (index + 1)"> <!-- APPEND "," until reach final index -->
               ,
             </if>
         </foreach>
@@ -80,7 +82,7 @@
             WHERE
             <foreach item="tag" index="index" collection="tags">
               name = #{tag}
-              <if test="(index + 1) != tags.size()"> <!-- APPEND "OR" until reach final index -->
+              <if test="tags.size() > (index + 1)"> <!-- APPEND "OR" until reach final index -->
                 OR
               </if>
             </foreach>

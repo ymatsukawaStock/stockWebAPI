@@ -12,7 +12,7 @@ public interface AccountRepository {
     @Param("token") String token
   );
 
-  void saveRelationByAccountIdAndTagNames (
+  void saveRelationByAccountIdAndTag (
     @Param("accountId") long accountId,
     @Param("tags") Set<String> tags
   );

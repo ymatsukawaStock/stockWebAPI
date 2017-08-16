@@ -11,6 +11,7 @@
         WHERE
           token = #{token}
     </select>
+
     <select id="findAccountByAccountIdAndInformationId" resultType="jp.ymatsukawa.stockapi.domain.entity.db.Account">
         SELECT
           accountid
@@ -22,18 +23,19 @@
           informationid = #{informationId}
     </select>
 
-    <insert id="saveRelationByAccountIdAndTagNames">
+    <insert id="saveRelationByAccountIdAndTag">
         INSERT INTO
           accounttags
           (accountid, tagid)
         VALUES
         <foreach item="tag" index="index" collection="tags">
             (#{accountId}, (SELECT tagid FROM tag WHERE name = #{tag}))
-            <if test="(index + 1) != tags.size()"> <!-- APPEND "," until reach final index -->
+            <if test="tags.size() > (index + 1)"> <!-- APPEND "," until reach final index -->
                 ,
             </if>
         </foreach>
     </insert>
+
     <insert id="saveRelationByAccountIdAndInformationId">
         INSERT INTO
           accountinformation
