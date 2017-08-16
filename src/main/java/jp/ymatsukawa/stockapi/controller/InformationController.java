@@ -82,7 +82,7 @@ public class InformationController {
       httpResponse.setStatus(HttpStatus.OK.value());
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {
-      logger.warn("client ip={} is requested to information domain and happened error: {}", httpRequest.getRemoteUser(), e.getMessage());
+      logger.warn("client ip={} requested to information domain and happened error: {}", httpRequest.getRemoteUser(), e.getMessage());
       httpResponse.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
       return ResponseFormatter.makeResponse(HttpStatus.INTERNAL_SERVER_ERROR, httpResponse);
     }
@@ -107,9 +107,9 @@ public class InformationController {
   ) {
     /**
      * validate request parameter
-     * when invalid, response is "400 Bad Request"
      */
     InformationDetail detail = new InformationDetail(informationId);
+
     /**
      * 1. get entity from service layer
      * 2. set http header
@@ -119,7 +119,7 @@ public class InformationController {
       BridgeInformation result = this.informationService.getSpecificInformation(detail.getInformationId());
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {
-      logger.warn("client ip={} is requested to information domain and happened error: {}", httpRequest.getRemoteUser(), e.getMessage());
+      logger.warn("client ip={} requested to information domain and happened error: {}", httpRequest.getRemoteUser(), e.getMessage());
       return ResponseFormatter.makeResponse(HttpStatus.INTERNAL_SERVER_ERROR, httpResponse);
     }
   }
@@ -145,11 +145,11 @@ public class InformationController {
   ) {
     /**
      * validate request parameter
-     * when invalid, response as "400 bad request"
      */
     Set errors = RequestValidator.getErrors(bindingResult);
     if(!errors.isEmpty()) {
       logger.info("client ip={} sent bad request with body={}", httpRequest.getRemoteAddr(), httpResponse);
+      httpResponse.setStatus(HttpStatus.BAD_REQUEST.value());
       return ResponseFormatter.makeErrorResponse(errors, httpResponse);
     }
 
@@ -160,7 +160,10 @@ public class InformationController {
      */
     try {
       long accountId = RequestConverter.getRequestAttribute(httpRequest, "accountId");
-      BridgeInformation result = this.informationService.create(creation.getInformation(), creation.getTag(), accountId);
+      InformationCreation.Information information = creation.getInformation();
+      BridgeInformation result = this.informationService.create(
+        information.getSubject(), information.getDetail(), information.getTag(), accountId
+      );
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {
       logger.warn("client ip={} requested information domain and happened error={}", httpRequest.getRemoteAddr(), e.getMessage());

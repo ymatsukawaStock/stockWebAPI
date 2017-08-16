@@ -1,19 +1,29 @@
 package jp.ymatsukawa.stockapi.controller.entity.information;
 
-import jp.ymatsukawa.stockapi.domain.entity.db.Information;
-import jp.ymatsukawa.stockapi.domain.entity.db.Tag;
 import lombok.Data;
+import lombok.NonNull;
 
 import javax.validation.Valid;
 
-/**
- * Union beans; Information and Tag.
- * Validation is delgated to each bean.
- */
 @Data
 public class InformationCreation {
+  @Data
+  public class Information {
+    public Information() {}
+    @Valid
+    public Information(String subject, String detail, String tag) {
+      this.subject = subject;
+      this.detail = detail;
+      this.tag = tag;
+    }
+    @NonNull
+    private String subject;
+    @NonNull
+    private String detail;
+    @NonNull
+    private String tag;
+  }
+
   @Valid
   private Information information;
-  @Valid
-  private Tag tag;
 }

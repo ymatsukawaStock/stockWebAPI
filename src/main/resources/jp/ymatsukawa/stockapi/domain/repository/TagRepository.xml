@@ -3,7 +3,7 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="jp.ymatsukawa.stockapi.domain.repository.TagRepository">
-    <select id="findSavedName" resultType="string">
+    <select id="findSavedTag" resultType="string">
         SELECT
           name
         FROM
@@ -12,22 +12,22 @@
           name
         IN
           (
-            <foreach item="name" index="index" collection="names">
-              #{name}
-              <if test="(index + 1) != names.size()"> <!-- APPEND "," until reach final index -->
+            <foreach item="tag" index="index" collection="tags">
+              #{tag}
+              <if test="tags.size() > (index + 1)"> <!-- APPEND "," until reach final index -->
                 ,
               </if>
             </foreach>
           )
     </select>
-    <insert id="save" timeout="20" parameterType="Tag">
+    <insert id="save" timeout="20">
         INSERT INTO
           tag
           (name, created)
         VALUES
-        <foreach item="name" index="index" collection="names">
-          (#{name}, NOW())
-          <if test="(index + 1) != names.size()"> <!-- APPEND "," until reach final index -->
+        <foreach item="tag" index="index" collection="tags">
+          (#{tag}, NOW())
+          <if test="tags.size() > (index + 1)"> <!-- APPEND "," until reach final index -->
             ,
           </if>
         </foreach>

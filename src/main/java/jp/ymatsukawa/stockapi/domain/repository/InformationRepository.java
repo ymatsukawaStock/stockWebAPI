@@ -9,11 +9,6 @@ import java.util.Set;
 
 @Mapper
 public interface InformationRepository {
-  /**
-   * Find all record from information table. <br />
-   * There is no sort restriction.
-   * @return List of Information. If record does not found, empty list is returned.
-   */
   List<Information> findAll(
     @Param("limit") long limit,
     @Param("sort") String sort,
@@ -21,34 +16,16 @@ public interface InformationRepository {
     @Param("informationIds") Set<Long> informationIds
   );
 
-  /**
-   * Find specific information record<br />
-   * @param informationId to specify information.
-   * @return specified information. If record does not found, returns empty.
-   */
   Information findByInformationId(
     @Param("informationId") long informationId
   );
 
-  /**
-   * Save information data(subject and detail) with tag. <br />
-   * tag (name - List of String, raw data is comma separated) is optional. <br />
-   * If requirements "no tags" exist, pass argument of "tag" to empty list.
-   * @param subject - information's subject
-   * @param detail - information's detail
-   */
   void save(
     @Param("information") Information information,
     @Param("subject") String subject,
     @Param("detail")  String detail
   );
 
-  /**
-   * update information specified by informationId
-   * @param informationId - to specify information
-   * @param subject - subject to update
-   * @param detail - detail to update
-   */
   void update(
     @Param("informationId") long informationId,
     @Param("subject") String subject,
