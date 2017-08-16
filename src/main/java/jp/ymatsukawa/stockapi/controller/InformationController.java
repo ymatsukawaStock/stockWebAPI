@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 // FIXME: build V1 endpoint. create super class > infra
+// TODO: set rate limit ... need KVS ... Redis
 @RequestMapping(
   produces = { MediaType.APPLICATION_JSON_VALUE }
 )
@@ -53,34 +54,36 @@ public class InformationController {
   public Map<String, Object> getInformationSubject(
     HttpServletRequest httpRequest,
     HttpServletResponse httpResponse,
-    @RequestParam(value = "limit") long limit,
+    @RequestParam(value = "limit",  required = false, defaultValue = "50")      long limit,
     @RequestParam(value = "tag",    required = false, defaultValue = "")        String tag,
     @RequestParam(value = "sort",   required = false, defaultValue = "created") String sort,
     @RequestParam(value = "sortBy", required = false, defaultValue = "desc")    String sortBy
   ) {
     /**
      * validate request parameter
-     * when invalid, response is "400 Bad Request"
      */
     InformationSubject subject = new InformationSubject(limit, tag, sort, sortBy);
     Set errors = RequestValidator.getErrors(subject);
     if(!errors.isEmpty()) {
       logger.info("Client:{} sent bad request, limit={}, tag={}, sort={}, sortBy={}", httpRequest.getRemoteAddr(), limit, tag, sort, sortBy);
+      httpResponse.setStatus(HttpStatus.BAD_REQUEST.value());
       return ResponseFormatter.makeErrorResponse(errors, httpResponse);
     }
 
     /**
      * 1. get entity-list from service layer
      * 2. set http header
-     * 3. return http body as response by entity-list
+     * 3. return body as entity-list
      */
     try {
-      List<BridgeInformation> result = this.informationService.getAll(
+      List<BridgeInformation> result = this.informationService.getSubject (
         subject.getLimit(), subject.getTag(), subject.getSort(), subject.getSortBy()
       );
+      httpResponse.setStatus(HttpStatus.OK.value());
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {
       logger.warn("client ip={} is requested to information domain and happened error: {}", httpRequest.getRemoteUser(), e.getMessage());
+      httpResponse.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
       return ResponseFormatter.makeResponse(HttpStatus.INTERNAL_SERVER_ERROR, httpResponse);
     }
   }

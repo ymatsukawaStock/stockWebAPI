@@ -1,25 +1,26 @@
-package jp.ymatsukawa.stockapi.domain.service.relation;
+package jp.ymatsukawa.stockapi.domain.service.common.relation;
 
 import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformationTags;
 import jp.ymatsukawa.stockapi.domain.repository.InformationTagsRepository;
 import jp.ymatsukawa.stockapi.domain.repository.TagRepository;
 import jp.ymatsukawa.stockapi.tool.converter.ListConverter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 @Service
 public class InformationTagsRelation {
+  @Autowired
+  InformationTagsRepository informationTagsRepository;
+
   /**
    * get map of informationId to tag name list.
    * @param informationTagsRepository to get information and tag name
    * @param tags set of tag
    * @return Map&lt;Long, List&lt;String&gt;&gt; that is map of informationid to tag name list
    */
-  public Map<Long, List<String>> getInformationidToTags(
-    InformationTagsRepository informationTagsRepository,
-    Set<String> tags
-  ) {
+  public Map<Long, List<String>> getInformationIdToTags(Set<String> tags) {
     /**
      * get records of BridgeInformation(informationId, tag's name)
      *
@@ -29,14 +30,11 @@ public class InformationTagsRelation {
      *  BridgeInformationTags(2, "example"),
      *  ...]
      */
-    List<BridgeInformationTags> informationTags = informationTagsRepository.findInformationByTag(tags, tags.size());
+    List<BridgeInformationTags> informationTags = this.informationTagsRepository.findInformationByTag(tags);
     return this.convertInformationIdToTags(informationTags);
   }
 
-  public Map<Long, List<String>> getInformationidToTags(
-    InformationTagsRepository informationTagsRepository,
-    long informationId
-  ) {
+  public Map<Long, List<String>> getInformationIdToTags(long informationId) {
     /**
      * get records of BridgeInformation(informationId, tag's name)
      *
@@ -46,7 +44,7 @@ public class InformationTagsRelation {
      *  BridgeInformationTags(2, "example"),
      *  ...]
      */
-    List<BridgeInformationTags> informationTags = informationTagsRepository.findTagByInformation(informationId);
+    List<BridgeInformationTags> informationTags = this.informationTagsRepository.findTagByInformation(informationId);
     return this.convertInformationIdToTags(informationTags);
   }
 

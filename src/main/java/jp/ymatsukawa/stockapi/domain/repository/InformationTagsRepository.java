@@ -16,8 +16,7 @@ public interface InformationTagsRepository {
    * @return List of Bridge InformationTags
    */
   List<BridgeInformationTags> findInformationByTag(
-    @Param("tags") Set<String> tags,
-    @Param("tagNumbers") int tagNumbers
+    @Param("tags") Set<String> tags
   );
 
   /**

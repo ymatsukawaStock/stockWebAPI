@@ -1,4 +1,4 @@
-package jp.ymatsukawa.stockapi.domain.service.relation;
+package jp.ymatsukawa.stockapi.domain.service.common.relation;
 
 import jp.ymatsukawa.stockapi.domain.repository.AccountRepository;
 import org.springframework.stereotype.Service;

@@ -21,6 +21,7 @@
             ON
               TAG.tagid = INFOTAG.tagid
             WHERE
+            <!-- search "AND" by "GROUP BY - HAVING - COUNT" way. -->
             <foreach item="tag" index="index" collection="tags">
               TAG.name = #{tag}
               <if test="(index + 1) != tags.size()"> <!-- APPEND "OR" until reach final index -->
@@ -30,7 +31,8 @@
             GROUP BY
               INFOTAG.informationid
             HAVING
-              COUNT(*) = #{tagNumbers}
+              <bind name="tagSize" value="tags.size()" />
+              COUNT(*) = #{tagSize}
           )
         </if>
     </select>

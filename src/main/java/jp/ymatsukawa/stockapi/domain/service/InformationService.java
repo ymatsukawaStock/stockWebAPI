@@ -11,9 +11,9 @@ import jp.ymatsukawa.stockapi.domain.entity.db.Tag;
 import jp.ymatsukawa.stockapi.domain.repository.AccountRepository;
 import jp.ymatsukawa.stockapi.domain.repository.InformationTagsRepository;
 import jp.ymatsukawa.stockapi.domain.repository.TagRepository;
-import jp.ymatsukawa.stockapi.domain.service.relation.AccountInformationRelation;
-import jp.ymatsukawa.stockapi.domain.service.relation.AccountTagRelation;
-import jp.ymatsukawa.stockapi.domain.service.relation.InformationTagsRelation;
+import jp.ymatsukawa.stockapi.domain.service.common.relation.AccountInformationRelation;
+import jp.ymatsukawa.stockapi.domain.service.common.relation.AccountTagRelation;
+import jp.ymatsukawa.stockapi.domain.service.common.relation.InformationTagsRelation;
 import jp.ymatsukawa.stockapi.tool.converter.ListConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -42,9 +42,10 @@ public class InformationService {
 
   /**
    * Get list of information. <br />
-   * When information is not found, returns null.
+   * When information is not found, returns null.<br />
+   * parameter's tags should be subset of informationId's tags
    * @param limit limit of getting information.
-   * @param tags tags information has. blank, single word or comma separated.
+   * @param tagNames tags information has. blank, single word or comma separated.
    * @param sort sort object, "id" or "date"
    * @param sortBy sort way "asc" or "desc"
    * @return List of Information entity.
@@ -52,22 +53,15 @@ public class InformationService {
    * @throws Exception when error occurs at process of RDBMS.
    */
   @Transactional
-  public List<BridgeInformation> getAll(
-    long limit, String tags, String sort, String sortBy
+  public List<BridgeInformation> getSubject (
+    long limit, String tagNames, String sort, String sortBy
   ) throws Exception {
-    // TODO: set rate limit ... need KVS ... Redis
     /**
-     * Get map of "informationId to its related tags".
-     * parameter's tags should be subset of informationId's tags
+     * Get map of { informationId -> tag } to prepare informationId's tag-array
      *
-     * ex. of matches
-     * tags: "foo,bar"
-     * matches     ... [informationId: 1, tag: "foo", tag: "bar", tag: "qux"]
-     * not matches ... [informationId: 2, tag: "foo", tag: "char"]
-     * not matches ... [informationId: 3, tag: "foo"]
-     *
-     * ex. of map
-     * parameter of tag is "foo,bar"
+     * ex.
+     * when tags is <"foo", "bar">
+     * then returned map is
      * {
      *   informationId: 1 -> name: "foo",
      *   informationId: 1 -> name: "bar",
@@ -77,21 +71,19 @@ public class InformationService {
      *   ...
      * }
      */
-    Set<String> tagSet = new HashSet<>();
-    if(!tags.isEmpty()) {
-      tagSet = new HashSet<>(ListConverter.getListBySplit(tags, ","));
+    Set<String> tags = new HashSet<>();
+    if(!tagNames.isEmpty()) {
+      tags = new HashSet<>(ListConverter.getListBySplit(tagNames, ","));
     }
-    Map<Long, List<String>> informationIdToTags = informationTagsRelation.getInformationidToTags(
-      informationTagsRepository, tagSet
-    );
-
+    Map<Long, List<String>> informationIdToTags = informationTagsRelation.getInformationIdToTags(tags);
     /**
-     * return empty list if record is not found.
+     * return null if relation is not found between informationId and tag.
      */
     if(informationIdToTags.isEmpty()) {
       return null;
     }
 
+    // TODO: re-check limit is only check when tag is empty.
     /**
      * get limited information data constrained by
      * "limit":  list size
@@ -100,16 +92,15 @@ public class InformationService {
      * "informationIds": informationIds which have all parameter's tags
      */
     List<Information> information = informationRepository.findAll(limit, sort, sortBy, informationIdToTags.keySet());
-
     /**
-     * return empty list if record is not found.
+     * return empty list if no information.
      */
     if(information.isEmpty()) {
       return null;
     }
 
     /**
-     * create entity Information list which has tag list.
+     * create information-list which has tag array.
      */
     List<BridgeInformation> entities = new ArrayList<>();
     information.forEach(info -> {
@@ -142,9 +133,7 @@ public class InformationService {
       return null;
     }
 
-    Map<Long, List<String>> informationIdToTags = informationTagsRelation.getInformationidToTags(
-      informationTagsRepository, informationId
-    );
+    Map<Long, List<String>> informationIdToTags = informationTagsRelation.getInformationIdToTags(informationId);
 
     BridgeInformation entity = null;
     if(informationIdToTags.isEmpty()) {
