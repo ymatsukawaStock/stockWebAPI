@@ -36,17 +36,6 @@ public class InformationController {
   @Autowired
   private InformationService informationService;
 
-  /**
-   * get information with limit, tag search, sort by date.<br />
-   * See External Design Stock API. TODO: put uri
-   * @param httpRequest servlet request.
-   * @param httpResponse servlet response.
-   * @param limit request param how many get information. Should be 1 to 2^32.
-   * @param tag request param what is tag of information. Should be blank, single word or comma separated.
-   * @param sort request param what is sort object of information. Should be "created" or "updated".
-   * @param sortBy request param how to sort information. Should be "desc" or "asc".
-   * @return Map&lt;String, Object&gt;. At http resepose body, json is written.
-   */
   @RequestMapping(
     method = RequestMethod.GET,
     value = "/information"
@@ -66,7 +55,6 @@ public class InformationController {
     Set errors = RequestValidator.getErrors(subject);
     if(!errors.isEmpty()) {
       logger.info("Client:{} sent bad request, limit={}, tag={}, sort={}, sortBy={}", httpRequest.getRemoteAddr(), limit, tag, sort, sortBy);
-      httpResponse.setStatus(HttpStatus.BAD_REQUEST.value());
       return ResponseFormatter.makeErrorResponse(errors, httpResponse);
     }
 
@@ -83,19 +71,10 @@ public class InformationController {
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {
       logger.warn("client ip={} requested to information domain and happened error: {}", httpRequest.getRemoteUser(), e.getMessage());
-      httpResponse.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
       return ResponseFormatter.makeResponse(HttpStatus.INTERNAL_SERVER_ERROR, httpResponse);
     }
   }
 
-
-  /**
-   * get specific information <br />
-   * See External Design Stock API. TODO: put uri
-   * @param httpRequest servlet request.
-   * @param httpResponse servlet response.
-   * @return Map&lt;String, Object&gt;. At http resepose body, json is written.
-   */
   @RequestMapping(
     method = RequestMethod.GET,
     value = "/information/{informationId}"
@@ -149,7 +128,6 @@ public class InformationController {
     Set errors = RequestValidator.getErrors(bindingResult);
     if(!errors.isEmpty()) {
       logger.info("client ip={} sent bad request with body={}", httpRequest.getRemoteAddr(), httpResponse);
-      httpResponse.setStatus(HttpStatus.BAD_REQUEST.value());
       return ResponseFormatter.makeErrorResponse(errors, httpResponse);
     }
 
@@ -171,14 +149,6 @@ public class InformationController {
     }
   }
 
-  /**
-   * update information.
-   * @param httpRequest servlet request.
-   * @param httpResponse servlet response.
-   * @param updation union beans of Information(subject, detail) and Tag(name)
-   * @param bindingResult if not valid at "creation" bean, size is over 0.
-   * @return Map&lt;String, Object&gt;. updated information which includes tag
-   */
   @RequestMapping(
     consumes = MediaType.APPLICATION_JSON_VALUE,
     method = RequestMethod.PUT,
@@ -191,10 +161,8 @@ public class InformationController {
     @Valid @RequestBody InformationUpdation updation,
     BindingResult bindingResult
   ) {
-    // TODO: commonize creation and updation union entity
     /**
      * validate request parameter
-     * when invalid, response as "400 bad request"
      */
     Set errors = RequestValidator.getErrors(bindingResult);
     if(!errors.isEmpty()) {
@@ -208,11 +176,10 @@ public class InformationController {
      * 3. return http body as response by entity
      */
     try {
-      Information information = updation.getInformation();
-      Tag tag = updation.getTag();
+      InformationUpdation.Information information = updation.getInformation();
       long accountId = RequestConverter.getRequestAttribute(httpRequest, "accountId");
       BridgeInformation result = this.informationService.update(
-        informationId, information.getSubject(), information.getDetail(), tag.getName(), accountId
+        informationId, information.getSubject(), information.getDetail(), information.getTag(), accountId
       );
       return ResponseFormatter.makeResponse(result, httpResponse);
     } catch (Exception e) {

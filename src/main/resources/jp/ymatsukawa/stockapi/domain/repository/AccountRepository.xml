@@ -11,6 +11,7 @@
         WHERE
           token = #{token}
     </select>
+
     <select id="findAccountByAccountIdAndInformationId" resultType="jp.ymatsukawa.stockapi.domain.entity.db.Account">
         SELECT
           accountid
@@ -34,6 +35,7 @@
             </if>
         </foreach>
     </insert>
+
     <insert id="saveRelationByAccountIdAndInformationId">
         INSERT INTO
           accountinformation

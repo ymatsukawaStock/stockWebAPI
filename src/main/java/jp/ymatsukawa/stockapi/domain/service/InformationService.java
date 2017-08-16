@@ -33,18 +33,6 @@ public class InformationService {
   @Autowired
   private InformationTagsRelation informationTagsRelation;
 
-  /**
-   * Get list of information. <br />
-   * When information is not found, returns null.<br />
-   * parameter's tags should be subset of informationId's tags
-   * @param limit limit of getting information.
-   * @param tagNames tags information has. blank, single word or comma separated.
-   * @param sort sort object, "id" or "date"
-   * @param sortBy sort way "asc" or "desc"
-   * @return List of Information entity.
-   * @return null when information is not found.
-   * @throws Exception when error occurs at process of RDBMS.
-   */
   @Transactional
   public List<BridgeInformation> getSubject (
     long limit, String tagNames, String sort, String sortBy
@@ -104,14 +92,6 @@ public class InformationService {
     return entities;
   }
 
-  /**
-   * Get specific information by informationId.<br />
-   * When information is not found, return null.
-   * @param informationId to specify information
-   * @return specified information entity.
-   * @return null when data is not found.
-   * @throws Exception when error occurs at process of RDBMS.
-   */
   @Transactional
   public BridgeInformation getSpecificInformation(
     long informationId
@@ -140,11 +120,6 @@ public class InformationService {
     return entity;
   }
 
-  /**
-   * Registers information with tag.<br />
-   * if tag(s) is not registered, save it as new.
-   * @throws Exception - when error occurs at process of RDBMS.
-   */
   @Transactional
   public BridgeInformation create(
     String subject, String detail, String tagNames, long accountId
@@ -196,30 +171,14 @@ public class InformationService {
     return (new BridgeInformation(information, ListConverter.getListBySplit(tagNames, ",")));
   }
 
-  /**
-   * update information with tag.<br />
-   * if informationId does not exist, return null.<br />
-   *
-   * @param informationId - specific informationId
-   * @param subject - information subject to update .
-   * @param detail - information detail to update.
-   * @param tags - tag name comma separated, single word or empty to update.
-   * @throws Exception - when error occurs at process of RDBMS.
-   */
   @Transactional
   public BridgeInformation update(
-    long informationId, String subject, String detail, String tags, long accountId
+    long informationId, String subject, String detail, String tagNames, long accountId
   ) throws Exception {
     /**
-     * check whether informationId exist
-     */
-    Information checkInfo = this.informationRepository.findByInformationId(informationId);
-    if(checkInfo == null) {
-      return null;
-    }
-    /**
-     * check whether request account is related to edit information.
-     * if not, do not permit to edit resource.
+     * check whether input accountId and informationId is related data.
+     * if not matched them, it's illegal; authenticated someone intended to edit others resource.
+     * do not permit above operation.
      */
     Account checkAccount = this.accountRepository.findAccountByAccountIdAndInformationId(accountId, informationId);
     if(checkAccount == null) {
@@ -227,19 +186,28 @@ public class InformationService {
     }
 
     /**
-     * when request tag is empty -- delete tag related by informationId<br />
-     * when request tag is not empty<br/>
-     * before process, register tag which is not yet storaged.<br />
-     * 1. if information does not have tag, register them all.
-     * 2. if information has tag,<br />
-     * check "delete tags" from exist tag and "add tags"<br />
-     * 1st, delete them if element exists.
-     * 2nd, add them  if element exists.
+     * tag edit operation.
+     *
+     * case A. input tag is empty
+     * delete tag related to informationId
+     * do not think relation about "account to tag"
+     *
+     * case B. input tag is not empty
+     * before operation, register tag which is not yet added to tag DB.
+     *
+     * B-1.
+     * when information does not have tag
+     * then register tags to information.
+     *
+     * B-2.
+     * when information has tag
+     * then get B-2-1; "delete tags from information" and B-2-2; "add tags to information"
+     * and delete tags with B-2-1, add tags with B-2-2 to information
      */
     List<BridgeInformationTags> informationTags = this.informationTagsRepository.findTagByInformation(informationId);
-    if(tags.isEmpty()) {
+    if(tagNames.isEmpty()) {
      /*
-      * when information has tag and request comes empty tag,
+      * when information has tag and input tag is empty,
       * delete all tag related by informationId
       */
       if(!informationTags.isEmpty()) {
@@ -247,58 +215,65 @@ public class InformationService {
       }
     } else {
       /*
-       * before register tag, save tag not yet storaged to DB
+       * before register tag, save tag not yet added to tag DB
        */
-      Set<String> addedTag = informationTagsRelation.saveTagRelationNotYetAdded(tags);
+      Set<String> addedTag = informationTagsRelation.saveTagRelationNotYetAdded(tagNames);
+
       /**
-       * chain relation between "account and tag" not "information and tag"
+       * chain relation between "account and added tag". it's NOT "information and added tag"
        */
-      accountRepository.saveRelationByAccountIdAndTag(accountId, addedTag);
+      if(!addedTag.isEmpty()) {
+        accountRepository.saveRelationByAccountIdAndTag(accountId, addedTag);
+      }
 
       if(informationTags.isEmpty()) {
         /**
-         * when information does not have tag and request tag comes,
+         * when information does not have tag and input tag is empty,
          * register all tag to information.
          */
-        Set<String> newAddedTags = new HashSet<>(ListConverter.getListBySplit(tags, ","));
-        this.informationTagsRepository.saveRelationByInfoIdAndTag(informationId, newAddedTags);
+        Set<String> inputTags = new HashSet<>(ListConverter.getListBySplit(tagNames, ","));
+        this.informationTagsRepository.saveRelationByInfoIdAndTag(informationId, inputTags);
       } else {
         /**
-         * when information has tag and request tag comes,
-         * 1st, clear up "delete tag" and "add tag"
+         * when information has tag and input tag is not empty
+         *
+         * 1st, get "delete tag" and "add tag"
          * 2nd, delete tag if "delete tag" exists.
          * 3rd, register tag if "add tag" exists.
          */
 
         /**
-         * get deleted tag set by Set calculation ... "exist tag set" - "request tag set"
-         * also get add tag set by Set calculation ... "request tag set" - "exist tag set"
+         * get deleted tag set by Set calculation ... "record tag set" - "input tag set"
+         * also get add tag set by Set calculation ... "input tag set" - "record tag set"
          */
-        Set<String> requestTagSet = new HashSet<>(ListConverter.getListBySplit(tags, ","));
-        Set<String> existTagSet = informationTags.stream().map(infoTag -> infoTag.getTag()).collect(Collectors.toSet());
+        Set<String> inputTags = new HashSet<>(ListConverter.getListBySplit(tagNames, ","));
+        Set<String> recordTags = informationTags.stream().map(infoTag -> infoTag.getTag()).collect(Collectors.toSet());
         // copy because set calculation is mutable.
-        Set<String> existTagSetCopy = existTagSet.stream().map(String::new).collect(Collectors.toSet());
+        Set<String> recordTagsCopy = recordTags.stream().map(String::new).collect(Collectors.toSet());
 
-        /*
-         * check whether exist delete tags.
-         * note: tag deletion happens when "delete tag"
-         * deletion of information tag does not mean deletion of account tag
+        /**
+         * delete tag if "delete tag" exist.
+         * NOTE: deletion of tag from information DOES NOT MEAN deletion of tag from account
+         *
+         * NOTE: get "deleted tag set" by Set calculation ... "record tag set" - "input tag set"
+
          */
-        existTagSet.removeAll(requestTagSet);
-        if(!existTagSet.isEmpty()) {
-          this.informationTagsRepository.deleteRelationByInformationIdAndTag(informationId, existTagSet);
+        recordTags.removeAll(inputTags);
+        if(!recordTags.isEmpty()) {
+          this.informationTagsRepository.deleteRelationByInformationIdAndTag(informationId, recordTags);
         }
 
         /*
-         * check whether exist add tag
-         * add them from informationTags and accountTags
+         * check whether exist add tag.
+         * add them to informationTags and accountTags
+         *
+         * NOTE: get "add tag set" by Set calculation ... "input tag set" - "record tag set"
          */
-        requestTagSet.removeAll(existTagSetCopy);
-        if(!requestTagSet.isEmpty()) {
-          this.informationTagsRepository.saveRelationByInfoIdAndTag(informationId, requestTagSet);
+        inputTags.removeAll(recordTagsCopy);
+        if(!inputTags.isEmpty()) {
+          this.informationTagsRepository.saveRelationByInfoIdAndTag(informationId, inputTags);
         }
       }
-
     }
 
     /**
@@ -306,7 +281,7 @@ public class InformationService {
      */
     this.informationRepository.update(informationId, subject, detail);
     Information information = this.informationRepository.findByInformationId(informationId);
-    return (new BridgeInformation(information, ListConverter.getListBySplit(tags, ",")));
+    return (new BridgeInformation(information, ListConverter.getListBySplit(tagNames, ",")));
   }
 
 }
