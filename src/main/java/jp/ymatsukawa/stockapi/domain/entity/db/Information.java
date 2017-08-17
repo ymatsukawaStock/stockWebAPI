@@ -21,14 +21,9 @@ public class Information {
     this.updated = new SimpleDateFormat("yyyy/MM/dd").format(updated);
   }
 
-  @NonNull
   private long informationId;
-  @NonNull
   private String subject;
-  @NonNull
   private String detail;
-  @NonNull
   private String created;
-  @NonNull
   private String updated;
 }

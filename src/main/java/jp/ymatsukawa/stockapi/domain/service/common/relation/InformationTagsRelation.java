@@ -18,9 +18,6 @@ public class InformationTagsRelation {
 
   /**
    * get map of informationId to tag name list.
-   * @param informationTagsRepository to get information and tag name
-   * @param tags set of tag
-   * @return Map&lt;Long, List&lt;String&gt;&gt; that is map of informationid to tag name list
    */
   public Map<Long, List<String>> getInformationIdToTags(Set<String> tags) {
     /**

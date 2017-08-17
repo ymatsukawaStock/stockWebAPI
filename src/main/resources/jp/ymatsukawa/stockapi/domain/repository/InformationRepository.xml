@@ -41,7 +41,10 @@
                 DESC
             </when>
         </choose>
-        LIMIT #{limit}
+        <if test="limit != -1">
+          <!-- -1 means no limitation and this is set when tag is input at service layer -->
+          LIMIT #{limit}
+        </if>
     </select>
 
     <select id="findByInformationId" resultType="jp.ymatsukawa.stockapi.domain.entity.db.Information">

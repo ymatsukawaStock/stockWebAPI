@@ -1,8 +1,10 @@
 package jp.ymatsukawa.stockapi.controller.entity.information;
 
+import jp.ymatsukawa.stockapi.tool.constant.Message;
 import jp.ymatsukawa.stockapi.tool.constant.RegExp;
 import lombok.Data;
 
+import javax.validation.constraints.Min;
 import javax.validation.constraints.Pattern;
 
 @Data
@@ -22,23 +24,27 @@ public class InformationSubject {
     this.sortBy = sortBy;
   }
 
+  @Min(
+    value = 1,
+    message = Message.Sentence.LIMIT_GREATER_THAN
+  )
   private long limit;
 
   @Pattern(
     regexp = RegExp.Pattern.COMMA_SEPARATED,
-    message = "tag name should be a single word or comma separated"
+    message = Message.Sentence.TAG_COMMA_SEPARATED
   )
   private String tag;
 
   @Pattern(
     regexp = RegExp.Pattern.CREATED_OR_UPDATED,
-    message = "sort should be created or updated"
+    message = Message.Sentence.SORT_ASC_OR_DESC
   )
   private String sort;
 
   @Pattern(
     regexp = RegExp.Pattern.ASC_OR_DESC,
-    message = "sortBy should be asc or desc"
+    message = Message.Sentence.SORT_BY_CREATED_OR_UPDATED
   )
   private String sortBy;
 }

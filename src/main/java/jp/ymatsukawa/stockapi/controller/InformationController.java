@@ -5,8 +5,6 @@ import jp.ymatsukawa.stockapi.controller.entity.information.InformationDetail;
 import jp.ymatsukawa.stockapi.controller.entity.information.InformationSubject;
 import jp.ymatsukawa.stockapi.controller.entity.information.InformationUpdation;
 import jp.ymatsukawa.stockapi.domain.entity.bridge.BridgeInformation;
-import jp.ymatsukawa.stockapi.domain.entity.db.Information;
-import jp.ymatsukawa.stockapi.domain.entity.db.Tag;
 import jp.ymatsukawa.stockapi.tool.communication.RequestValidator;
 import jp.ymatsukawa.stockapi.tool.communication.ResponseFormatter;
 import jp.ymatsukawa.stockapi.domain.service.InformationService;
@@ -36,6 +34,7 @@ public class InformationController {
   @Autowired
   private InformationService informationService;
 
+  // TODO: set pagination
   @RequestMapping(
     method = RequestMethod.GET,
     value = "/information"

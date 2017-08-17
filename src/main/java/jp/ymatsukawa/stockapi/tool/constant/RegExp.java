@@ -8,9 +8,9 @@ public enum RegExp {
   CREATED_OR_UPDATED(Pattern.CREATED_OR_UPDATED);
 
   public static class Pattern {
-    public static final String COMMA_SEPARATED = "\\p{Alnum}*|(\\p{Alnum}+)(,\\p{Alnum}+)";
-    public static final String ASC_OR_DESC = "^asc$|^desc$";
-    public static final String CREATED_OR_UPDATED = "^created$|^updated$";
+    public static final String COMMA_SEPARATED = "(\\A[^,]*\\z)|(\\A([^,]+,)+[^,]+\\z)";
+    public static final String ASC_OR_DESC = "\\Aasc\\z|\\Adesc\\z";
+    public static final String CREATED_OR_UPDATED = "\\Acreated\\z|^updated\\z";
   }
 
   private RegExp(String pattern) {

@@ -1,5 +1,6 @@
 package jp.ymatsukawa.stockapi.domain.entity.db;
 
+import jp.ymatsukawa.stockapi.tool.constant.Message;
 import jp.ymatsukawa.stockapi.tool.constant.RegExp;
 import lombok.Data;
 
@@ -12,9 +13,5 @@ public class Tag {
     this.name = name;
   }
   private long tagId;
-  @Pattern(
-    regexp = RegExp.Pattern.COMMA_SEPARATED,
-    message = "tag name should be a single word or comma separated"
-  )
   private String name;
 }
