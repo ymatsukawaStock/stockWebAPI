@@ -51,10 +51,13 @@ public class InformationService {
      *   informationId: 2 -> name: "bar",
      *   ...
      * }
+     *
+     * no tags <""> means search all tags
      */
     Set<String> tags = new HashSet<>();
     if(!tagNames.isEmpty()) {
       tags = new HashSet<>(ListConverter.getListBySplit(tagNames, ","));
+      limit = -1; // do not check limitation of search size TODO: set pagination
     }
     Map<Long, List<String>> informationIdToTags = informationTagsRelation.getInformationIdToTags(tags);
     /**
@@ -67,7 +70,7 @@ public class InformationService {
     // TODO: re-check limit is only check when tag is empty.
     /**
      * get limited information data constrained by
-     * "limit":  list size
+     * "limit":  list size; if limit = -1 ... when tag is set, do not think about limitation. get all search result.
      * "sort":   sort object; what to sort
      * "sortBy": sort way; how to sort
      * "informationIds": informationIds which have all parameter's tags
@@ -168,7 +171,8 @@ public class InformationService {
      * create and return information entity.
      */
     information = this.informationRepository.findByInformationId(information.getInformationId());
-    return (new BridgeInformation(information, ListConverter.getListBySplit(tagNames, ",")));
+    List<String> tagsOfInformation = ListConverter.getListBySplit(tagNames, ",").stream().distinct().collect(Collectors.toList());
+    return (new BridgeInformation(information, tagsOfInformation));
   }
 
   @Transactional
@@ -281,7 +285,8 @@ public class InformationService {
      */
     this.informationRepository.update(informationId, subject, detail);
     Information information = this.informationRepository.findByInformationId(informationId);
-    return (new BridgeInformation(information, ListConverter.getListBySplit(tagNames, ",")));
+    List<String> tagsOfInformation = ListConverter.getListBySplit(tagNames, ",").stream().distinct().collect(Collectors.toList());
+    return (new BridgeInformation(information, tagsOfInformation));
   }
 
 }
